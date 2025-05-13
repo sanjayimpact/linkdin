@@ -1,0 +1,18 @@
+[
+  {
+    "name": "li_at",
+    "value": "AQEDATehuUcBYBxCAAABlsQ5N4YAAAGW6EW7hlYAVZ3k-V_xQDyMKcn068d2uCRN3q8UmsJOU_MYjHRSTL0iO5w7L0JEwPszOejrOlxKMPgeU-YLwbmYI6NO_ToAJfQg0FEeP85PKGuDf4Ihhxv9OL4G",
+    "domain": ".www.linkedin.com",
+    "path": "/",
+    "expires": 1778584806.753204,
+    "size": 157,
+    "httpOnly": true,
+    "secure": true,
+    "session": false,
+    "sameSite": "None",
+    "priority": "Medium",
+    "sameParty": false,
+    "sourceScheme": "Secure",
+    "sourcePort": 443
+  }
+]

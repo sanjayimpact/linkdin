@@ -2,8 +2,9 @@
   "name": "linkedinscrap",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "start": "nodemon index.js",
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -17,6 +18,7 @@
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "multer": "^1.4.5-lts.2",
+    "node-cron": "^4.0.3",
     "nodemon": "^3.1.10",
     "puppeteer": "^24.8.0",
     "puppeteer-extra": "^3.3.6",
