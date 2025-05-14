@@ -47,7 +47,7 @@ const maxPages = 5; // Change to 10 or 100 based on your need
       const cookies = JSON.parse(fs.readFileSync(cookiePath, 'utf8'));
       await page.setCookie(...cookies);
       await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded' });
-     
+     console.log('cookie mil gya')
       // Verify if we're logged in
      const loggedIn = await page.$('main[aria-label="Main Feed"]');
 
@@ -55,7 +55,7 @@ const maxPages = 5; // Change to 10 or 100 based on your need
       console.log('✅ Logged in using saved cookie');
     } else {
       // No cookies, proceed with login
-
+ console.log('cookie nhimila ')
 
       console.log('🔐 Logging into LinkedIn with credentials...');
       await page.goto('https://www.linkedin.com/login', { waitUntil: 'domcontentloaded' });
