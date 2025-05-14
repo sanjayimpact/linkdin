@@ -28,6 +28,7 @@ let leads = [];
 
 
   const cookiePath = path.join(__dirname, 'cookies.json');
+  console.log(cookiePath);
   let browser;
 
   try {
@@ -89,6 +90,7 @@ const maxPages = 5; // Change to 10 or 100 based on your need
     await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
 
  while (currentPage <= maxPages) {
+  console.log("inside while")
       for (let i = 0; i < 3; i++) {
         await page.evaluate(() => window.scrollBy(0, window.innerHeight));
         await new Promise(resolve => setTimeout(resolve, 2500));
@@ -129,7 +131,7 @@ const maxPages = 5; // Change to 10 or 100 based on your need
       }
 
       fs.writeFileSync('leads.json', JSON.stringify(leads, null, 2));
-
+      console.log("enter lead length")
       // Send connection requests
       // await page.evaluate(async () => {
       //   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
