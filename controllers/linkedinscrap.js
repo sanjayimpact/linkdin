@@ -38,6 +38,7 @@ let leads = [];
       defaultViewport: null,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
+    console.log('baba')
  let allScrapedProfiles = [];
 let currentPage = 1;
 const maxPages = 5; // Change to 10 or 100 based on your need
