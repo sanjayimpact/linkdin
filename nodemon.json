@@ -1,5 +1,3 @@
 {
-  "watch": ["src"],
-  "ext": "js,mjs,cjs",
-  "ignore": ["*.json"]
+  "ignore": ["cookies.json"]
 }

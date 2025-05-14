@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 
 export const linkedinscrap = async(req,res)=>{
-
+const { email, password } = req.body;
   const{id} = req.params;
   console.log(`[SCRAPER] Incoming request for ID: ${id}`);
 
@@ -37,11 +37,11 @@ console.log(`[SCRAPER] Got company info: size = ${company_size}, sector = ${comp
   try {
      console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
-      headless:true,
+      headless:false,
       slowMo:50,
       defaultViewport: null,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      protocolTimeout: 180000
+      
     });
     console.log('baba')
  let allScrapedProfiles = [];
@@ -51,11 +51,11 @@ const maxPages = 5; // Change to 10 or 100 based on your need
     if (fs.existsSync(cookiePath)) {
       const cookies = JSON.parse(fs.readFileSync(cookiePath, 'utf8'));
       await page.setCookie(...cookies);
-      await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'networkidle2', timeout: 60000 });
+      await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded' });
 
      console.log('cookie mil gya')
       // Verify if we're logged in
-     const loggedIn = await page.$('main[aria-label="Main Feed"]',{ timeout: 30000 });
+     const loggedIn = await page.$('main[aria-label="Main Feed"]');
       console.log(loggedIn,'bhai hojayega');
       if (!loggedIn) throw new Error('Saved cookie is invalid or expired. Please login again.');
       console.log('✅ Logged in using saved cookie');
@@ -67,7 +67,10 @@ const maxPages = 5; // Change to 10 or 100 based on your need
       console.log('🔐 Logging into LinkedIn with credentials...');
       await page.goto('https://www.linkedin.com/login', { waitUntil: 'domcontentloaded' });
 
-    
+    await page.type('input#username', email, { delay: 100 });
+await page.type('input#password', password, { delay: 100 });
+
+
 
       await Promise.all([
         page.click('button[type="submit"]'),
@@ -127,20 +130,29 @@ const maxPages = 5; // Change to 10 or 100 based on your need
       });
  
       for (const profile of scrapedProfiles) {
-        leads.push({
-          name: profile.name,
-          url: profile.profileUrl,
-          headline: profile.headline,
-          location: profile.location,
-
-          connectedAt: new Date().toISOString(),
-          firstMessageSent: false,
-          replied: false
-        });
+       if (
+  profile.name &&
+  profile.profileUrl &&
+  profile.headline &&
+  profile.location
+) {
+  leads.push({
+    name: profile.name,
+    url: profile.profileUrl,
+    headline: profile.headline,
+    location: profile.location,
+    connectedAt: new Date().toISOString(),
+    connectionRequest: false, // should be true if you intend to mark them
+    firstMessageSent: false,
+    replied: false
+  });
+}
+       
+     
       }
+     
 
-      fs.writeFileSync('leads.json', JSON.stringify(leads, null, 2));
-      console.log("enter lead length")
+ 
       // Send connection requests
       // await page.evaluate(async () => {
       //   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -171,7 +183,23 @@ const maxPages = 5; // Change to 10 or 100 based on your need
       await new Promise(resolve => setTimeout(resolve, 3000));
       currentPage++;
     }
-
+    try{
+let token ='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzIxOTkwMiwiZXhwIjoxNzQ3MjIxNzAyLCJuYmYiOjE3NDcyMTk5MDIsImp0aSI6ImdUa2NXNWwwQ2xtN09IUVMiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlfQ.2xtdcHgwu0nEublmR5b99YKbxFuZDtpCWQBNQ_qwnGU'
+await axios.post(
+  'https://impactmindz.in/client/scaleleads/api/linkedin/leads',
+  {
+    campaign_id: null,
+    scraped: leads
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  }
+);
+    }catch(err){
+      console.log(err);
+    }
 
     await browser.close();
      return res.status(200).json({
