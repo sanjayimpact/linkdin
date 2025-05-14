@@ -35,7 +35,7 @@ let leads = [];
       headless:false,
       slowMo:50,
       defaultViewport: null,
-      args: ['--start-maximized'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
  let allScrapedProfiles = [];
 let currentPage = 1;
