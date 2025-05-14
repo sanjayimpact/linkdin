@@ -37,6 +37,7 @@ let leads = [];
       slowMo:50,
       defaultViewport: null,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      protocolTimeout: 180000
     });
     console.log('baba')
  let allScrapedProfiles = [];
