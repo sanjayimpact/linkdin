@@ -10,6 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const linkedinscrap = async(req,res)=>{
 
   const{id} = req.params;
+  console.log(`[SCRAPER] Incoming request for ID: ${id}`);
+
 let leads = [];
   
   let getdata = await axios.get(`https://impactmindz.in/client/scaleleads/api/user/profile/${id}`);
@@ -21,17 +23,19 @@ let leads = [];
   if(data.status){
      company_size = data?.profile?.company_size;
      company = data?.profile?.sector;
-
+console.log(`[SCRAPER] Got company info: size = ${company_size}, sector = ${company}`);
   }
 
 
 
 
   const cookiePath = path.join(__dirname, 'cookies.json');
-  console.log(cookiePath);
+  console.log(`[SCRAPER] Cookie path: ${cookiePath}`);
+
   let browser;
 
   try {
+     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
       headless:true,
       slowMo:50,
@@ -51,9 +55,10 @@ const maxPages = 5; // Change to 10 or 100 based on your need
      console.log('cookie mil gya')
       // Verify if we're logged in
      const loggedIn = await page.$('main[aria-label="Main Feed"]');
-
+      console.log(loggedIn,'bhai hojayega');
       if (!loggedIn) throw new Error('Saved cookie is invalid or expired. Please login again.');
       console.log('✅ Logged in using saved cookie');
+       console.log(`[SCRAPER] ✅ Logged in using saved cookie`);
     } else {
       // No cookies, proceed with login
  console.log('cookie nhimila ')
@@ -88,11 +93,12 @@ const maxPages = 5; // Change to 10 or 100 based on your need
     }
 
     const searchUrl = `https://www.linkedin.com/search/results/people/?companySize=${company_size}&keywords=${encodeURIComponent(company)}`;
-  
+   console.log(`[SCRAPER] Navigating to search URL: ${searchUrl}`);
     await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
 
  while (currentPage <= maxPages) {
-  console.log("inside while")
+     console.log(`[SCRAPER] Scraping page ${currentPage}`);
+
       for (let i = 0; i < 3; i++) {
         await page.evaluate(() => window.scrollBy(0, window.innerHeight));
         await new Promise(resolve => setTimeout(resolve, 2500));
