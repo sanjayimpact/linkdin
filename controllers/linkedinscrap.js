@@ -51,10 +51,11 @@ const maxPages = 5; // Change to 10 or 100 based on your need
     if (fs.existsSync(cookiePath)) {
       const cookies = JSON.parse(fs.readFileSync(cookiePath, 'utf8'));
       await page.setCookie(...cookies);
-      await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded' });
+      await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'networkidle2', timeout: 60000 });
+
      console.log('cookie mil gya')
       // Verify if we're logged in
-     const loggedIn = await page.$('main[aria-label="Main Feed"]');
+     const loggedIn = await page.$('main[aria-label="Main Feed"]',{ timeout: 30000 });
       console.log(loggedIn,'bhai hojayega');
       if (!loggedIn) throw new Error('Saved cookie is invalid or expired. Please login again.');
       console.log('✅ Logged in using saved cookie');
