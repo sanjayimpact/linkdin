@@ -131,23 +131,23 @@ const maxPages = 5; // Change to 10 or 100 based on your need
       fs.writeFileSync('leads.json', JSON.stringify(leads, null, 2));
 
       // Send connection requests
-      await page.evaluate(async () => {
-        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-        const connectButtons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
-        for (let i = 0; i < connectButtons.length; i++) {
-          try {
-            connectButtons[i].click();
-            await delay(1500);
-            const addNoteBtn = document.querySelector('button[aria-label="Send without a note"]');
-            if (addNoteBtn) {
-              addNoteBtn.click();
-              await delay(1000);
-            }
-          } catch (e) {
-            console.warn(`❌ Failed at index ${i}`, e);
-          }
-        }
-      });
+      // await page.evaluate(async () => {
+      //   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      //   const connectButtons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
+      //   for (let i = 0; i < connectButtons.length; i++) {
+      //     try {
+      //       connectButtons[i].click();
+      //       await delay(1500);
+      //       const addNoteBtn = document.querySelector('button[aria-label="Send without a note"]');
+      //       if (addNoteBtn) {
+      //         addNoteBtn.click();
+      //         await delay(1000);
+      //       }
+      //     } catch (e) {
+      //       console.warn(`❌ Failed at index ${i}`, e);
+      //     }
+      //   }
+      // });
 
       const nextBtn = await page.$('button[aria-label="Next"]');
       if (!nextBtn) break;
