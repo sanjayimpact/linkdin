@@ -1,17 +1,30 @@
 import fs from 'fs';
 import puppeteer from 'puppeteer';
 import cron from 'node-cron';
-const DB_PATH = 'leads.json';
+import axios from 'axios';
+import path from 'path';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const COOKIE_PATH = 'cookies.json';
 const FOLLOW_UP_MESSAGES = [
   "Just checking in 🙂",
   "Thought I’d follow up – anything I can support with?",
   "Circling back on my last message."
 ];
+let token  ="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzIyMTcyMywiZXhwIjoxNzQ3MjIzNTIzLCJuYmYiOjE3NDcyMjE3MjMsImp0aSI6InU3cGw1a0hzdXVBSkllTlUiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlfQ.gRuSTv6qA60IPELuBfGxrel1To6uMiMZDzw2FoVju8c"
 
-function loadLeads() {
-  if (!fs.existsSync(DB_PATH)) return [];
-  return JSON.parse(fs.readFileSync(DB_PATH));
+async function loadLeads() {
+try {
+    const response = await axios.get('https://impactmindz.in/client/scaleleads/api/linkedin/leads', {
+      headers: {
+        Authorization: `Bearer ${token}`, // Replace if required
+      }
+    });
+    return response.data.leads || []; // assuming leads are inside `leads` key
+  } catch (err) {
+    console.error('❌ Failed to fetch leads from API:', err.message);
+    return [];
+  }
 }
 
 function saveLeads(data) {
@@ -47,7 +60,7 @@ async function sendLinkedInMessage(page, profileUrl, message) {
 const run = async () => {
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
-  const cookies = JSON.parse(fs.readFileSync(COOKIE_PATH, 'utf8'));
+  const cookies = path.join(__dirname, "cookies.json")
   await page.setCookie(...cookies);
   await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded' });
 
