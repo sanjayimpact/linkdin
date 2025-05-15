@@ -35,10 +35,20 @@ export const linkedinscrap = async (req, res) => {
   try {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
-      executablePath: '/usr/bin/google-chrome-stable',
+      //executablePath: '/usr/bin/google-chrome-stable',
       headless:true,
     
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-gpu',
+    '--disable-dev-shm-usage',
+    '--disable-extensions',
+    '--disable-background-networking',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--window-size=1920,1080',
+  ],
     });
     console.log("baba");
     let allScrapedProfiles = [];
@@ -71,18 +81,17 @@ export const linkedinscrap = async (req, res) => {
         waitUntil: "domcontentloaded",
       });
       console.log("dom loaded")
-      await page.waitForSelector('input#username', { timeout: 10000 });
-console.log("✅ Username input loaded");
+
 
 await page.type('input#username', email, { delay: 100 });
 console.log("✅ Email typed");
 
-await page.waitForSelector('input#password', { timeout: 10000 });
-console.log("✅ Password input loaded");
+
 
 await page.type('input#password', password, { delay: 100 });
 console.log("✅ Password typed");
-
+await page.screenshot({ path: 'login_page_loaded.png', fullPage: true });
+console.log("📸 Screenshot saved: login_page_loaded.png");
     //   await page.type("input#username", email, { delay: 100 });
     //   console.log("email typing")
     //   await page.type("input#password", password, { delay: 100 });
