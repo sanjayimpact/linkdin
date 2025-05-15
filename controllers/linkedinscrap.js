@@ -35,9 +35,10 @@ export const linkedinscrap = async (req, res) => {
   try {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
-    
+      //executablePath:"/usr/bin/google-chrome",
       headless: true,
-   
+      slowMo: 50,
+      defaultViewport: null,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     console.log("baba");
@@ -65,13 +66,13 @@ export const linkedinscrap = async (req, res) => {
     } else {
       // No cookies, proceed with login
       console.log("cookie nhimila ");
-await page.screenshot({ path: '/tmp/before_linkedin_login_page.png', fullPage: true });
+
       console.log("🔐 Logging into LinkedIn with credentials...");
       await page.goto("https://www.linkedin.com/login", {
         waitUntil: "domcontentloaded",
         timeout: 60000, // 60 seconds
       });
-      await page.screenshot({ path: '/tmp/after_linkedin_login_page.png', fullPage: true });
+      await page.screenshot({ path: 'linkedin_login_page.png', fullPage: true });
       console.log("✅ Reached LinkedIn login page");
 
       await page.type("input#username", email, { delay: 100 });
