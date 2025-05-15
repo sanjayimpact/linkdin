@@ -66,18 +66,21 @@ export const linkedinscrap = async (req, res) => {
     } else {
       // No cookies, proceed with login
       console.log("cookie nhimila ");
-
+await page.screenshot({ path: 'linkedin_login_page.png', fullPage: true });
       console.log("🔐 Logging into LinkedIn with credentials...");
       await page.goto("https://www.linkedin.com/login", {
         waitUntil: "domcontentloaded",
+        timeout: 60000, // 60 seconds
       });
+      await page.screenshot({ path: 'linkedin_login_page.png', fullPage: true });
+      console.log("✅ Reached LinkedIn login page");
 
       await page.type("input#username", email, { delay: 100 });
       await page.type("input#password", password, { delay: 100 });
 
       await Promise.all([
         page.click('button[type="submit"]'),
-        page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+        page.waitForNavigation({ waitUntil: "domcontentloaded",timeout: 60000 }),
       ]);
 
       const loginError = await page.$(".alert-content");
