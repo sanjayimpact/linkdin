@@ -71,10 +71,22 @@ export const linkedinscrap = async (req, res) => {
         waitUntil: "domcontentloaded",
       });
       console.log("dom loaded")
+      await page.waitForSelector('input#username', { timeout: 10000 });
+console.log("✅ Username input loaded");
 
-      await page.type("input#username", email, { delay: 100 });
-      await page.type("input#password", password, { delay: 100 });
-     console.log("email type hora")
+await page.type('input#username', email, { delay: 100 });
+console.log("✅ Email typed");
+
+await page.waitForSelector('input#password', { timeout: 10000 });
+console.log("✅ Password input loaded");
+
+await page.type('input#password', password, { delay: 100 });
+console.log("✅ Password typed");
+
+    //   await page.type("input#username", email, { delay: 100 });
+    //   console.log("email typing")
+    //   await page.type("input#password", password, { delay: 100 });
+    //  console.log("email type hora")
       await Promise.all([
         page.click('button[type="submit"]'),
         page.waitForNavigation({ waitUntil: "domcontentloaded" }),
