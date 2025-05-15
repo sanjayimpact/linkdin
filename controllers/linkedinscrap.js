@@ -198,24 +198,24 @@ export const linkedinscrap = async (req, res) => {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       currentPage++;
     }
-    // try {
-    //   let token =
-    //     "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzMwNjM1MiwiZXhwIjoxNzQ3MzA4MTUyLCJuYmYiOjE3NDczMDYzNTIsImp0aSI6Im01Zmp1alZwRndIeTM1dXUiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlfQ.QAotH3RiQeMq3lqUiH8dt84b1JZ6iCbOjyY706gNM00";
-    //   await axios.post(
-    //     "https://impactmindz.in/client/scaleleads/api/linkedin/leads",
-    //     {
-    //       campaign_id: null,
-    //       scraped: leads,
-    //     },
-    //     {
-    //       headers: {
-    //         Authorization: `Bearer ${token}`,
-    //       },
-    //     }
-    //   );
-    // } catch (err) {
-    //   console.log(err);
-    // }
+    try {
+      let token =
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzMwODQ3MywiZXhwIjoxNzQ3MzEwMjczLCJuYmYiOjE3NDczMDg0NzMsImp0aSI6ImlDWG9lU3N0eVB2Nlh5akwiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlfQ.uRm5Yd5MqTbViBEUfeTE4HiJsfGGMg2qa6qdRb9l7jU";
+      await axios.post(
+        "https://impactmindz.in/client/scaleleads/api/linkedin/leads",
+        {
+          campaign_id: null,
+          scraped: leads,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+    } catch (err) {
+      console.log(err);
+    }
 
     await browser.close();
     return res.status(200).json({
