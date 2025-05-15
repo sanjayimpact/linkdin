@@ -81,7 +81,9 @@ export const linkedinscrap = async (req, res) => {
         waitUntil: "domcontentloaded",
       });
       console.log("dom loaded")
-
+await page.screenshot({ path: 'login_page_loaded.png', fullPage: true });
+console.log("📸 Screenshot saved: login_page_loaded.png");
+ 
 
 await page.type('input#username', email, { delay: 100 });
 console.log("✅ Email typed");
@@ -90,9 +92,7 @@ console.log("✅ Email typed");
 
 await page.type('input#password', password, { delay: 100 });
 console.log("✅ Password typed");
-await page.screenshot({ path: 'login_page_loaded.png', fullPage: true });
-console.log("📸 Screenshot saved: login_page_loaded.png");
-    //   await page.type("input#username", email, { delay: 100 });
+   //   await page.type("input#username", email, { delay: 100 });
     //   console.log("email typing")
     //   await page.type("input#password", password, { delay: 100 });
     //  console.log("email type hora")
