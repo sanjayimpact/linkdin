@@ -78,7 +78,7 @@ export const linkedinscrap = async (req, res) => {
 
       console.log("🔐 Logging into LinkedIn with credentials...");
       await page.goto("https://www.linkedin.com/login", {
-        waitUntil: "domcontentloaded",
+        waitUntil: "networkidle2",
       });
       console.log("dom loaded")
 
