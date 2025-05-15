@@ -9,7 +9,7 @@ export const linkedinscrap = async (req, res) => {
   const { email, password } = req.body;
   const { id } = req.params;
   console.log(`[SCRAPER] Incoming request for ID: ${id}`);
-
+ console.log(email,password,'here is the credentials')
   let leads = [];
 
   let getdata = await axios.get(
@@ -36,9 +36,8 @@ export const linkedinscrap = async (req, res) => {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
       executablePath: '/usr/bin/google-chrome-stable',
-      headless: true,
-      slowMo: 50,
-      defaultViewport: null,
+      headless:true,
+    
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     console.log("baba");
@@ -71,10 +70,11 @@ export const linkedinscrap = async (req, res) => {
       await page.goto("https://www.linkedin.com/login", {
         waitUntil: "domcontentloaded",
       });
+      console.log("dom loaded")
 
       await page.type("input#username", email, { delay: 100 });
       await page.type("input#password", password, { delay: 100 });
-
+     console.log("email type hora")
       await Promise.all([
         page.click('button[type="submit"]'),
         page.waitForNavigation({ waitUntil: "domcontentloaded" }),
