@@ -37,12 +37,10 @@ export const linkedinscrap = async (req, res) => {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
       //executablePath:"/usr/bin/google-chrome",
-      headless: true,
+      headless: false,
       slowMo: 50,
       defaultViewport: null,
-    args: [
-  '--no-sandbox',
-  '--disable-setuid-sandbox'],
+
     });
     console.log("baba");
     let allScrapedProfiles = [];
@@ -93,6 +91,7 @@ export const linkedinscrap = async (req, res) => {
 
       const client = await page.target().createCDPSession();
       const allCookies = (await client.send("Network.getAllCookies")).cookies;
+       await new Promise((resolve) => setTimeout(resolve, 6000));
     console.log('get cookies','asdfkds',allCookies)
       const liAtCookie = allCookies.find((cookie) => cookie.name === "li_at");
       if (!liAtCookie) throw new Error("li_at cookie not found after login!");
@@ -163,6 +162,7 @@ export const linkedinscrap = async (req, res) => {
             connectedAt: new Date().toISOString(),
             connectionRequest: false, // should be true if you intend to mark them
             firstMessageSent: false,
+         
             replied: false,
           });
         }
@@ -204,7 +204,7 @@ export const linkedinscrap = async (req, res) => {
       await axios.post(
         "https://impactmindz.in/client/scaleleads/api/linkedin/leads",
         {
-          campaign_id: null,
+        campaign_id: 11,
           scraped: leads,
         },
         {
