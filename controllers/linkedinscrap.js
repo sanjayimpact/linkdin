@@ -96,7 +96,7 @@ console.log("✅ Password typed");
     //  console.log("email type hora")
       await Promise.all([
         page.click('button[type="submit"]'),
-        page.waitForNavigation({ waitUntil: "networkidle2" ,timeout: 0 }),
+        page.waitForNavigation({ waitUntil: "domcontentloaded" }),
       ]);
 
       const loginError = await page.$(".alert-content");
