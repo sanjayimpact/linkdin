@@ -36,21 +36,12 @@ export const linkedinscrap = async (req, res) => {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
      executablePath: '/usr/bin/google-chrome-stable',
-      headless:false,
+      headless:true,
     
       args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-gpu',
-    '--disable-dev-shm-usage',
-    '--disable-extensions',
-    '--disable-background-networking',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--window-size=1920,1080',
-  ],
+    '--no-sandbox'],
     });
-    console.log("baba");
+ 
     let allScrapedProfiles = [];
     let currentPage = 1;
     const maxPages = 5; // Change to 10 or 100 based on your need
@@ -74,13 +65,13 @@ export const linkedinscrap = async (req, res) => {
       console.log(`[SCRAPER] ✅ Logged in using saved cookie`);
     } else {
       // No cookies, proceed with login
-      console.log("cookie nhimila ");
 
       console.log("🔐 Logging into LinkedIn with credentials...");
       await page.goto("https://www.linkedin.com/login", {
         waitUntil: "domcontentloaded",
       });
       console.log("dom loaded")
+      // yha tk bhi nhi phuch ra
 await page.screenshot({ path: 'login_page_loaded.png', fullPage: true });
 console.log("📸 Screenshot saved: login_page_loaded.png");
  
