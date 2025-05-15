@@ -39,7 +39,14 @@ export const linkedinscrap = async (req, res) => {
       headless:true,
     
       args: [
-    '--no-sandbox'],
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-accelerated-2d-canvas',
+    '--no-zygote',
+    '--disable-gpu',
+    '--window-size=1920x1080',
+  ],
     });
  
     let allScrapedProfiles = [];
@@ -89,9 +96,9 @@ console.log("✅ Password typed");
     //  console.log("email type hora")
       await Promise.all([
         page.click('button[type="submit"]'),
-        page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+        page.waitForNavigation({ waitUntil: "networkidle2" ,timeout: 0 }),
       ]);
-await new Promise(resolve => setTimeout(resolve, 60000));
+
       const loginError = await page.$(".alert-content");
       if (loginError)
         throw new Error("Login failed. Check your LinkedIn credentials.");
