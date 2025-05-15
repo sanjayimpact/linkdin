@@ -82,7 +82,7 @@ export const linkedinscrap = async (req, res) => {
         page.click('button[type="submit"]'),
         page.waitForNavigation({ waitUntil: "domcontentloaded",timeout: 60000 }),
       ]);
-
+await new Promise((resolve) => setTimeout(resolve, 6000));
       const loginError = await page.$(".alert-content");
       if (loginError)
         throw new Error("Login failed. Check your LinkedIn credentials.");
