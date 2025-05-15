@@ -20,8 +20,8 @@ export const linkedinscrap = async (req, res) => {
   let company;
 
   if (data.status) {
-    company_size = data?.profile?.company_size;
-    company = data?.profile?.sector;
+    company_size = data?.profile[0]?.company_size;
+    company = data?.profile[0]?.sector;
     console.log(
       `[SCRAPER] Got company info: size = ${company_size}, sector = ${company}`
     );
@@ -35,7 +35,8 @@ export const linkedinscrap = async (req, res) => {
   try {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
-      headless: false,
+      executablePath:"usr/bin/google-chrome",
+      headless: true,
       slowMo: 50,
       defaultViewport: null,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
