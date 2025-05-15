@@ -37,27 +37,17 @@ export const linkedinscrap = async (req, res) => {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
       //executablePath:"/usr/bin/google-chrome",
-      headless: true,
+      headless: false,
       slowMo: 50,
       defaultViewport: null,
     args: [
   '--no-sandbox',
-  '--disable-setuid-sandbox',
-  '--disable-dev-shm-usage',
-  '--disable-accelerated-2d-canvas',
-  '--disable-gpu',
-  '--no-zygote',
-  '--single-process',
-  '--no-first-run',
-  '--no-default-browser-check',
-  '--disable-features=site-per-process',
-  '--window-size=1920,1080'
-],
+  '--disable-setuid-sandbox'],
     });
     console.log("baba");
     let allScrapedProfiles = [];
     let currentPage = 1;
-    const maxPages = 5; // Change to 10 or 100 based on your need
+    const maxPages = 2; // Change to 10 or 100 based on your need
     const page = await browser.newPage();
     if (fs.existsSync(cookiePath)) {
       const cookies = JSON.parse(fs.readFileSync(cookiePath, "utf8"));
@@ -208,24 +198,24 @@ export const linkedinscrap = async (req, res) => {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       currentPage++;
     }
-    try {
-      let token =
-        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzMwNjM1MiwiZXhwIjoxNzQ3MzA4MTUyLCJuYmYiOjE3NDczMDYzNTIsImp0aSI6Im01Zmp1alZwRndIeTM1dXUiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlfQ.QAotH3RiQeMq3lqUiH8dt84b1JZ6iCbOjyY706gNM00";
-      await axios.post(
-        "https://impactmindz.in/client/scaleleads/api/linkedin/leads",
-        {
-          campaign_id: null,
-          scraped: leads,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-    } catch (err) {
-      console.log(err);
-    }
+    // try {
+    //   let token =
+    //     "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzMwNjM1MiwiZXhwIjoxNzQ3MzA4MTUyLCJuYmYiOjE3NDczMDYzNTIsImp0aSI6Im01Zmp1alZwRndIeTM1dXUiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlfQ.QAotH3RiQeMq3lqUiH8dt84b1JZ6iCbOjyY706gNM00";
+    //   await axios.post(
+    //     "https://impactmindz.in/client/scaleleads/api/linkedin/leads",
+    //     {
+    //       campaign_id: null,
+    //       scraped: leads,
+    //     },
+    //     {
+    //       headers: {
+    //         Authorization: `Bearer ${token}`,
+    //       },
+    //     }
+    //   );
+    // } catch (err) {
+    //   console.log(err);
+    // }
 
     await browser.close();
     return res.status(200).json({
