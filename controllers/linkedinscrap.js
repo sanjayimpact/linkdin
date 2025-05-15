@@ -9,7 +9,7 @@ export const linkedinscrap = async (req, res) => {
   const { email, password } = req.body;
   const { id } = req.params;
   console.log(`[SCRAPER] Incoming request for ID: ${id}`);
- console.log(email,password,'here is the credentials')
+
   let leads = [];
 
   let getdata = await axios.get(
@@ -35,12 +35,12 @@ export const linkedinscrap = async (req, res) => {
   try {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
-      executablePath: path.resolve('./chromium/chrome-linux/chrome'),
-      headless:true,
-    
-       args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: false,
+      slowMo: 50,
+      defaultViewport: null,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
- 
+    console.log("baba");
     let allScrapedProfiles = [];
     let currentPage = 1;
     const maxPages = 5; // Change to 10 or 100 based on your need
@@ -64,28 +64,16 @@ export const linkedinscrap = async (req, res) => {
       console.log(`[SCRAPER] ✅ Logged in using saved cookie`);
     } else {
       // No cookies, proceed with login
+      console.log("cookie nhimila ");
 
       console.log("🔐 Logging into LinkedIn with credentials...");
       await page.goto("https://www.linkedin.com/login", {
         waitUntil: "domcontentloaded",
       });
-      console.log("dom loaded")
-      // yha tk bhi nhi phuch ra
-await page.screenshot({ path: 'login_page_loaded.png', fullPage: true });
-console.log("📸 Screenshot saved: login_page_loaded.png");
- 
 
-await page.type('input#username', email, { delay: 100 });
-console.log("✅ Email typed");
+      await page.type("input#username", email, { delay: 100 });
+      await page.type("input#password", password, { delay: 100 });
 
-
-
-await page.type('input#password', password, { delay: 100 });
-console.log("✅ Password typed");
-   //   await page.type("input#username", email, { delay: 100 });
-    //   console.log("email typing")
-    //   await page.type("input#password", password, { delay: 100 });
-    //  console.log("email type hora")
       await Promise.all([
         page.click('button[type="submit"]'),
         page.waitForNavigation({ waitUntil: "domcontentloaded" }),
