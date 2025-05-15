@@ -37,7 +37,7 @@ export const linkedinscrap = async (req, res) => {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
       //executablePath:"/usr/bin/google-chrome",
-      headless: false,
+      headless: true,
       slowMo: 50,
       defaultViewport: null,
 
@@ -167,25 +167,25 @@ export const linkedinscrap = async (req, res) => {
           });
         }
       }
-
+console.log(leads);
       // Send connection requests
-      await page.evaluate(async () => {
-        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-        const connectButtons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
-        for (let i = 0; i < connectButtons.length; i++) {
-          try {
-            connectButtons[i].click();
-            await delay(1500);
-            const addNoteBtn = document.querySelector('button[aria-label="Send without a note"]');
-            if (addNoteBtn) {
-              addNoteBtn.click();
-              await delay(1000);
-            }
-          } catch (e) {
-            console.warn(`❌ Failed at index ${i}`, e);
-          }
-        }
-      });
+      // await page.evaluate(async () => {
+      //   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      //   const connectButtons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
+      //   for (let i = 0; i < connectButtons.length; i++) {
+      //     try {
+      //       connectButtons[i].click();
+      //       await delay(1500);
+      //       const addNoteBtn = document.querySelector('button[aria-label="Send without a note"]');
+      //       if (addNoteBtn) {
+      //         addNoteBtn.click();
+      //         await delay(1000);
+      //       }
+      //     } catch (e) {
+      //       console.warn(`❌ Failed at index ${i}`, e);
+      //     }
+      //   }
+      // });
 
       const nextBtn = await page.$('button[aria-label="Next"]');
       if (!nextBtn) break;
@@ -200,7 +200,7 @@ export const linkedinscrap = async (req, res) => {
     }
     try {
       let token =
-        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzMwODQ3MywiZXhwIjoxNzQ3MzEwMjczLCJuYmYiOjE3NDczMDg0NzMsImp0aSI6ImlDWG9lU3N0eVB2Nlh5akwiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlfQ.uRm5Yd5MqTbViBEUfeTE4HiJsfGGMg2qa6qdRb9l7jU";
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzMwOTczMiwiZXhwIjoxNzQ3MzExNTMyLCJuYmYiOjE3NDczMDk3MzIsImp0aSI6ImFKSGZ2eEdlUzBTRGcxOTAiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlLCJtZXNzYWdlc19maWxsZWQiOnRydWV9.PHlcrnnjFubEL-MtveiwIfe_IEWlpELXfpQnWiUmILw";
       await axios.post(
         "https://impactmindz.in/client/scaleleads/api/linkedin/leads",
         {
