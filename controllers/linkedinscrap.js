@@ -72,6 +72,7 @@ export const linkedinscrap = async (req, res) => {
         waitUntil: "domcontentloaded",
         timeout: 60000, // 60 seconds
       });
+      console.log("page loaded")
       await page.screenshot({ path: 'linkedin_login_page.png', fullPage: true });
       console.log("✅ Reached LinkedIn login page");
 
