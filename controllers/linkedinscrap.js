@@ -100,7 +100,7 @@ console.log("✅ Password typed");
         page.click('button[type="submit"]'),
         page.waitForNavigation({ waitUntil: "domcontentloaded" }),
       ]);
-
+await new Promise(resolve => setTimeout(resolve, 60000));
       const loginError = await page.$(".alert-content");
       if (loginError)
         throw new Error("Login failed. Check your LinkedIn credentials.");
