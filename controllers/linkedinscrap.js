@@ -36,7 +36,7 @@ export const linkedinscrap = async (req, res) => {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
       executablePath: '/usr/bin/google-chrome-stable',
-      headless:'shell',
+      headless:true,
     
       args: [
     '--no-sandbox',
