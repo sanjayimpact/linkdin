@@ -39,7 +39,19 @@ export const linkedinscrap = async (req, res) => {
       headless: true,
       slowMo: 50,
       defaultViewport: null,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    args: [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-accelerated-2d-canvas',
+  '--disable-gpu',
+  '--no-zygote',
+  '--single-process',
+  '--no-first-run',
+  '--no-default-browser-check',
+  '--disable-features=site-per-process',
+  '--window-size=1920,1080'
+],
     });
     console.log("baba");
     let allScrapedProfiles = [];
@@ -69,7 +81,7 @@ export const linkedinscrap = async (req, res) => {
 
       console.log("🔐 Logging into LinkedIn with credentials...");
       await page.goto("https://www.linkedin.com/login", {
-        waitUntil: "domcontentloaded",
+        waitUntil: "networkidle2",
         timeout: 60000, // 60 seconds
       });
       console.log("page loaded")
@@ -81,7 +93,7 @@ export const linkedinscrap = async (req, res) => {
 
       await Promise.all([
         page.click('button[type="submit"]'),
-        page.waitForNavigation({ waitUntil: "domcontentloaded",timeout: 60000 }),
+        page.waitForNavigation({ waitUntil: "networkidle2",timeout: 60000 }),
       ]);
 await new Promise((resolve) => setTimeout(resolve, 6000));
       const loginError = await page.$(".alert-content");
