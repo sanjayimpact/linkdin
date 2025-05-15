@@ -93,7 +93,7 @@ export const linkedinscrap = async (req, res) => {
 
       const client = await page.target().createCDPSession();
       const allCookies = (await client.send("Network.getAllCookies")).cookies;
-
+    console.log('get cookies','asdfkds',allCookies)
       const liAtCookie = allCookies.find((cookie) => cookie.name === "li_at");
       if (!liAtCookie) throw new Error("li_at cookie not found after login!");
 
