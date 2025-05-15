@@ -35,18 +35,10 @@ export const linkedinscrap = async (req, res) => {
   try {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
-     executablePath: '/usr/bin/chromium',
+     executablePath: '/usr/bin/chromium-browser',
       headless:true,
     
-      args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-accelerated-2d-canvas',
-    '--no-zygote',
-    '--disable-gpu',
-    '--window-size=1920x1080',
-  ],
+       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
  
     let allScrapedProfiles = [];
