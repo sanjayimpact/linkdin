@@ -38,7 +38,13 @@ export const linkedinscrap = async (req, res) => {
     browser = await puppeteer.launch({
       //executablePath:"/usr/bin/google-chrome",
       headless: true,
- 
+ args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-blink-features=AutomationControlled',
+    '--window-size=1920,1080',
+  ],
       defaultViewport: null,
 
     });
@@ -82,13 +88,15 @@ export const linkedinscrap = async (req, res) => {
 
       await Promise.all([
         page.click('button[type="submit"]'),
-        page.waitForNavigation({ waitUntil: "networkidle2"}),
+        page.waitForNavigation({ waitUntil: "domcontentloaded"}),
       ]);
 
       const loginError = await page.$(".alert-content");
       if (loginError)
         throw new Error("Login failed. Check your LinkedIn credentials.");
-
+await page.goto("https://www.linkedin.com/feed/", {
+        waitUntil: "domcontentloaded",
+      });
       const client = await page.target().createCDPSession();
       const allCookies = (await client.send("Network.getAllCookies")).cookies;
        await new Promise((resolve) => setTimeout(resolve, 6000));
