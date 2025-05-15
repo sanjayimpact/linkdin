@@ -38,7 +38,7 @@ export const linkedinscrap = async (req, res) => {
     browser = await puppeteer.launch({
       //executablePath:"/usr/bin/google-chrome",
       headless: true,
-      slowMo: 50,
+ 
       defaultViewport: null,
 
     });
@@ -82,7 +82,7 @@ export const linkedinscrap = async (req, res) => {
 
       await Promise.all([
         page.click('button[type="submit"]'),
-        page.waitForNavigation({ waitUntil: "domcontentloaded"}),
+        page.waitForNavigation({ waitUntil: "networkidle2"}),
       ]);
 
       const loginError = await page.$(".alert-content");
