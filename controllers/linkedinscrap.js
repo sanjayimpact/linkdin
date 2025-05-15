@@ -3,8 +3,9 @@ import puppeteer from "puppeteer-extra";
 import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
+puppeteer.use(StealthPlugin());
 export const linkedinscrap = async (req, res) => {
   const { email, password } = req.body;
   const { id } = req.params;
@@ -36,7 +37,7 @@ export const linkedinscrap = async (req, res) => {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
     browser = await puppeteer.launch({
       //executablePath:"/usr/bin/google-chrome",
-      headless: true,
+      headless: false,
       slowMo: 50,
       defaultViewport: null,
     args: [
@@ -81,8 +82,8 @@ export const linkedinscrap = async (req, res) => {
 
       console.log("🔐 Logging into LinkedIn with credentials...");
       await page.goto("https://www.linkedin.com/login", {
-        waitUntil: "networkidle2",
-        timeout: 60000, // 60 seconds
+        waitUntil: "domcontentloaded",
+        
       });
       console.log("page loaded")
   
@@ -93,9 +94,9 @@ export const linkedinscrap = async (req, res) => {
 
       await Promise.all([
         page.click('button[type="submit"]'),
-        page.waitForNavigation({ waitUntil: "networkidle2",timeout: 60000 }),
+        page.waitForNavigation({ waitUntil: "domcontentloaded"}),
       ]);
-await new Promise((resolve) => setTimeout(resolve, 6000));
+
       const loginError = await page.$(".alert-content");
       if (loginError)
         throw new Error("Login failed. Check your LinkedIn credentials.");
@@ -109,12 +110,8 @@ await new Promise((resolve) => setTimeout(resolve, 6000));
       // Save full cookie
       fs.writeFileSync(cookiePath, JSON.stringify([liAtCookie], null, 2));
       console.log("✅ li_at cookie saved to cookies.json");
-      await browser.close();
-      return res.status(200).json({
-        status: true,
-        message:
-          "🔒 Login successful & cookie saved. Please run the script again to start scraping.",
-      });
+   
+    
     }
 
     const searchUrl = `https://www.linkedin.com/search/results/people/?companySize=${company_size}&keywords=${encodeURIComponent(
@@ -182,23 +179,23 @@ await new Promise((resolve) => setTimeout(resolve, 6000));
       }
 
       // Send connection requests
-      // await page.evaluate(async () => {
-      //   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-      //   const connectButtons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
-      //   for (let i = 0; i < connectButtons.length; i++) {
-      //     try {
-      //       connectButtons[i].click();
-      //       await delay(1500);
-      //       const addNoteBtn = document.querySelector('button[aria-label="Send without a note"]');
-      //       if (addNoteBtn) {
-      //         addNoteBtn.click();
-      //         await delay(1000);
-      //       }
-      //     } catch (e) {
-      //       console.warn(`❌ Failed at index ${i}`, e);
-      //     }
-      //   }
-      // });
+      await page.evaluate(async () => {
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        const connectButtons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
+        for (let i = 0; i < connectButtons.length; i++) {
+          try {
+            connectButtons[i].click();
+            await delay(1500);
+            const addNoteBtn = document.querySelector('button[aria-label="Send without a note"]');
+            if (addNoteBtn) {
+              addNoteBtn.click();
+              await delay(1000);
+            }
+          } catch (e) {
+            console.warn(`❌ Failed at index ${i}`, e);
+          }
+        }
+      });
 
       const nextBtn = await page.$('button[aria-label="Next"]');
       if (!nextBtn) break;
@@ -213,7 +210,7 @@ await new Promise((resolve) => setTimeout(resolve, 6000));
     }
     try {
       let token =
-        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzIxOTkwMiwiZXhwIjoxNzQ3MjIxNzAyLCJuYmYiOjE3NDcyMTk5MDIsImp0aSI6ImdUa2NXNWwwQ2xtN09IUVMiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlfQ.2xtdcHgwu0nEublmR5b99YKbxFuZDtpCWQBNQ_qwnGU";
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzMwNjM1MiwiZXhwIjoxNzQ3MzA4MTUyLCJuYmYiOjE3NDczMDYzNTIsImp0aSI6Im01Zmp1alZwRndIeTM1dXUiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlfQ.QAotH3RiQeMq3lqUiH8dt84b1JZ6iCbOjyY706gNM00";
       await axios.post(
         "https://impactmindz.in/client/scaleleads/api/linkedin/leads",
         {
