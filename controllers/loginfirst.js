@@ -8,7 +8,7 @@ export const loginlinkedin = async()=>{
 try{
  const browser = await puppeteer.launch({
     headless: false, // ⬅️ Visible browser
-    args: ['--window-size=1280,800'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
   const page = await browser.newPage();
