@@ -6,10 +6,16 @@ import axios from "axios";
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 puppeteer.use(StealthPlugin());
+
+const BROWSER_WS = `wss://brd-customer-hl_05bc0618-zone-scraping_browser1-country-us-session-${Math.random()
+  .toString(36)
+  .substring(7)}:i3s5h2r9ylf4@brd.superproxy.io:9222`;
+
 export const linkedinscrap = async (req, res) => {
   const { email, password } = req.body;
   const { id } = req.params;
   console.log(`[SCRAPER] Incoming request for ID: ${id}`);
+  console.log(req.body);
 
   let leads = [];
 
@@ -35,19 +41,20 @@ export const linkedinscrap = async (req, res) => {
 
   try {
     console.log(`[SCRAPER] Launching Puppeteer browser...`);
-    browser = await puppeteer.launch({
-      //executablePath:"/usr/bin/google-chrome",
-      headless: true,
- args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-blink-features=AutomationControlled',
-    '--window-size=1920,1080',
-  ],
-      defaultViewport: null,
+//     browser = await puppeteer.launch({
+//       //executablePath:"/usr/bin/google-chrome",
+//       headless: true,
+//  args: [
+//     '--no-sandbox',
+//     '--disable-setuid-sandbox',
+//     '--disable-dev-shm-usage',
+//     '--disable-blink-features=AutomationControlled',
+//     '--window-size=1920,1080',
+//   ],
+//       defaultViewport: null,
 
-    });
+//     });
+browser = await puppeteer.connect({ browserWSEndpoint: BROWSER_WS });
     console.log("baba");
     let allScrapedProfiles = [];
     let currentPage = 1;
@@ -72,20 +79,33 @@ export const linkedinscrap = async (req, res) => {
       console.log(`[SCRAPER] ✅ Logged in using saved cookie`);
     } else {
       // No cookies, proceed with login
+      await new Promise(resolve => setTimeout(resolve, 6000));
       console.log("cookie nhimila ");
-
+ await page.screenshot({ path:'before_login.png' });
       console.log("🔐 Logging into LinkedIn with credentials...");
       await page.goto("https://www.linkedin.com/login", {
-        waitUntil: "domcontentloaded",
+        waitUntil: "domcontentloaded",timeout: 60000
         
       });
       console.log("page loaded")
-  
+  await page.screenshot({ path:'login.png' });
       console.log("✅ Reached LinkedIn login page");
 
-      await page.type("input#username", email, { delay: 100 });
-      await page.type("input#password", password, { delay: 100 });
+      // await page.type("input#username", email, { delay: 100 });
+      // await page.type("input#password", password, { delay: 100 });
 
+ 
+await page.focus('input#username');
+await page.keyboard.type(email, { delay: 100 });
+
+await page.evaluate(() => {
+  document.querySelector('input#password').focus();
+});
+await page.keyboard.sendCharacter(password); // this simulates "paste"
+
+await page.screenshot({ path: 'before-login.png' });
+console.log("yha tk phuch gya bhai ab submit kr")
+await new Promise((resolve) => setTimeout(resolve, 6000));
       await Promise.all([
         page.click('button[type="submit"]'),
         page.waitForNavigation({ waitUntil: "domcontentloaded"}),
