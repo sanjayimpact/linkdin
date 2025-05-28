@@ -7,10 +7,9 @@ import path from "path";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const FOLLOW_UP_MESSAGES = ["Just checking in 🙂"];
-let token =
-  "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzIyNTc4NCwiZXhwIjoxNzQ3MjI3NTg0LCJuYmYiOjE3NDcyMjU3ODQsImp0aSI6ImlkUWlQc1RCYUFyaDlCS2oiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlfQ.nRBfGmIPFOKeUT3QXA4OIdeSlaiTvUEBdEL8dc9i1mE";
 
-async function loadLeads() {
+
+async function loadLeads(token) {
   try {
     const response = await axios.get(
       "https://impactmindz.in/client/scaleleads/api/linkedin/leads",
@@ -51,24 +50,52 @@ async function sendLinkedInMessage(page, profileUrl, message) {
   }
 }
 
-export const run = async () => {
+export const runjob = async (req,res) => {
+  // get the token
+  let token = req.token;
+// get the user id;
+  const {sub} = req.user;
+ let li_at_token = "";
+
+  // fetch the cookies 
+  try{
+       const tokenRes = await axios.get(`https://impactmindz.in/client/scaleleads/api/linkedin-token/${sub}`,{
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+    const {data} = tokenRes;
+ 
+     li_at_token = data?.data?.linkedin_token;
+     console.log(li_at_token);
+    
+     if (!li_at_token) throw new Error("Missing li_at token");
+  }catch(err){
+    console.log(err);
+  }
+
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
-  const cookiesPath = path.join(__dirname, "cookies.json");
+   await page.setCookie({
+      name: "li_at",
+      value: li_at_token,
+      domain: ".linkedin.com",
+      path: "/",
+      httpOnly: true,
+      secure: true,
+    });
 
-  const cookies = JSON.parse(fs.readFileSync(cookiesPath, "utf8"));
-
-  await page.setCookie(...cookies);
   await page.goto("https://www.linkedin.com/feed/", {
     waitUntil: "domcontentloaded",
   });
+ 
+  let leads = await loadLeads(token);
 
-  let leads = await loadLeads();
 
   const now = new Date();
 
   // 1. Update connections (detect newly accepted requests)
-  console.log("🔄 Checking for new accepted connections...");
+
   await page.goto(
     "https://www.linkedin.com/mynetwork/invite-connect/connections/",
     { waitUntil: "domcontentloaded" }

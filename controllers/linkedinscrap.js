@@ -7,149 +7,127 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 puppeteer.use(StealthPlugin());
 
-const BROWSER_WS = `wss://brd-customer-hl_05bc0618-zone-scraping_browser1-country-us-session-${Math.random()
-  .toString(36)
-  .substring(7)}:i3s5h2r9ylf4@brd.superproxy.io:9222`;
+const BROWSER_WS = `wss://brd-customer-hl_6ed9d8e4-zone-scraping_browser1:zd2q5gl4gqat@brd.superproxy.io:9222`;
+
+function simulateMouseMove(page) {
+  return page.mouse.move(
+    Math.floor(Math.random() * 1000),
+    Math.floor(Math.random() * 600),
+    { steps: 5 + Math.floor(Math.random() * 10) }
+  );
+}
+
 
 export const linkedinscrap = async (req, res) => {
-  const { email, password } = req.body;
   const { id } = req.params;
-  console.log(`[SCRAPER] Incoming request for ID: ${id}`);
-  console.log(req.body);
+  const{sub} = req.user;
+  const token = req.token;
 
-  let leads = [];
 
-  let getdata = await axios.get(
-    `https://impactmindz.in/client/scaleleads/api/user/profile/${id}`
-  );
-  const { data } = getdata;
-  let company_size;
-  let company;
+  // 1. 🔐 Fetch li_at token from your backend API
+  let li_at_token = "";
+  try {
+    const tokenRes = await axios.get(`https://impactmindz.in/client/scaleleads/api/linkedin-token/${sub}`,{
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+    const {data} = tokenRes;
+    
+  
+    li_at_token = data?.data?.linkedin_token;
 
-  if (data.status) {
-    company_size = data?.profile[0]?.company_size;
-    company = data?.profile[0]?.sector;
-    console.log(
-      `[SCRAPER] Got company info: size = ${company_size}, sector = ${company}`
-    );
+    if (!li_at_token) throw new Error("Missing li_at token");
+  } catch (err) {
+    console.error("❌ Failed to fetch li_at token:", err.message);
+    return res.status(500).send("Failed to fetch LinkedIn cookie");
   }
 
-  const cookiePath = path.join(__dirname, `cookies_${id}.json`);
-  console.log(`[SCRAPER] Cookie path: ${cookiePath}`);
+  // 2. 🔍 Fetch additional company info
+  let leads = [];
+  let company_size = "";
+  let company = "";
+  try {
+    const profileRes = await axios.get(`https://impactmindz.in/client/scaleleads/api/user/profile/${sub}`,{
+      headers:{
+        Authorization: `Bearer ${token}`,
+      }
+    });
+const {data} = profileRes;
+
+
+    const profile = data?.profile?.[0];
+    console.log(profile);
+
+    company_size = profile?.company_size;
+    company = profile?.sector;
+  } catch (err) {
+    console.warn("⚠️ Failed to fetch profile info:", err.message);
+  }
 
   let browser;
-
   try {
-    console.log(`[SCRAPER] Launching Puppeteer browser...`);
+    browser = await puppeteer.connect({
+      browserWSEndpoint: BROWSER_WS
+    
+    });
 //     browser = await puppeteer.launch({
 //       //executablePath:"/usr/bin/google-chrome",
-//       headless: true,
+//       headless: false,
 //  args: [
 //     '--no-sandbox',
 //     '--disable-setuid-sandbox',
-//     '--disable-dev-shm-usage',
-//     '--disable-blink-features=AutomationControlled',
-//     '--window-size=1920,1080',
+//     '--window-size=1200,800'
 //   ],
-//       defaultViewport: null,
+//   defaultViewport: {
+//     width: 1200,
+//     height: 800,
+//   },
+//     })
 
-//     });
-browser = await puppeteer.connect({ browserWSEndpoint: BROWSER_WS });
-    console.log("baba");
-    let allScrapedProfiles = [];
-    let currentPage = 1;
-    const maxPages = 2; // Change to 10 or 100 based on your need
     const page = await browser.newPage();
-    if (fs.existsSync(cookiePath)) {
-      const cookies = JSON.parse(fs.readFileSync(cookiePath, "utf8"));
-      await page.setCookie(...cookies);
-      await page.goto("https://www.linkedin.com/feed/", {
-        waitUntil: "domcontentloaded",
-      });
 
-      console.log("cookie mil gya");
-      // Verify if we're logged in
-      const loggedIn = await page.$('main[aria-label="Main Feed"]');
-      console.log(loggedIn, "bhai hojayega");
-      if (!loggedIn)
-        throw new Error(
-          "Saved cookie is invalid or expired. Please login again."
-        );
-      console.log("✅ Logged in using saved cookie");
-      console.log(`[SCRAPER] ✅ Logged in using saved cookie`);
-    } else {
-      // No cookies, proceed with login
-      await new Promise(resolve => setTimeout(resolve, 6000));
-      console.log("cookie nhimila ");
- await page.screenshot({ path:'before_login.png' });
-      console.log("🔐 Logging into LinkedIn with credentials...");
-      await page.goto("https://www.linkedin.com/login", {
-        waitUntil: "domcontentloaded",timeout: 60000
-        
-      });
-      console.log("page loaded")
-  await page.screenshot({ path:'login.png' });
-      console.log("✅ Reached LinkedIn login page");
+await page.goto("https://www.linkedin.com");
+await page.evaluate((liAt) => {
+  document.cookie = `li_at=${liAt}; domain=.linkedin.com; path=/; secure; SameSite=None`;
+}, li_at_token);
 
-      // await page.type("input#username", email, { delay: 100 });
-      // await page.type("input#password", password, { delay: 100 });
+await page.evaluate(() => location.href = "https://www.linkedin.com/feed");
+await page.waitForNavigation({ waitUntil: "domcontentloaded" });
 
- 
-await page.focus('input#username');
-await page.keyboard.type(email, { delay: 100 });
+    // 4. 🔗 Open LinkedIn and validate login
 
-await page.evaluate(() => {
-  document.querySelector('input#password').focus();
-});
-await page.keyboard.sendCharacter(password); // this simulates "paste"
-
-await page.screenshot({ path: 'before-login.png' });
-console.log("yha tk phuch gya bhai ab submit kr")
-await new Promise((resolve) => setTimeout(resolve, 6000));
-      await Promise.all([
-        page.click('button[type="submit"]'),
-        page.waitForNavigation({ waitUntil: "domcontentloaded"}),
-      ]);
-
-      const loginError = await page.$(".alert-content");
-      if (loginError)
-        throw new Error("Login failed. Check your LinkedIn credentials.");
-await page.goto("https://www.linkedin.com/feed/", {
-        waitUntil: "domcontentloaded",
-      });
-      const client = await page.target().createCDPSession();
-      const allCookies = (await client.send("Network.getAllCookies")).cookies;
-       await new Promise((resolve) => setTimeout(resolve, 6000));
-    console.log('get cookies','asdfkds',allCookies)
-      const liAtCookie = allCookies.find((cookie) => cookie.name === "li_at");
-      if (!liAtCookie) throw new Error("li_at cookie not found after login!");
-
-      // Save full cookie
-      fs.writeFileSync(cookiePath, JSON.stringify([liAtCookie], null, 2));
-      console.log("✅ li_at cookie saved to cookies.json");
-   
-    
+    if (await page.$("input[name=session_key]")) {
+      throw new Error("Invalid li_at token. Login page loaded.");
     }
-
-    const searchUrl = `https://www.linkedin.com/search/results/people/?companySize=${company_size}&keywords=${encodeURIComponent(
-      company
-    )}`;
-    console.log(`[SCRAPER] Navigating to search URL: ${searchUrl}`);
-    await page.goto(searchUrl, { waitUntil: "domcontentloaded" });
+    console.log("✅ Logged in successfully using li_at cookie");
+await page.screenshot({ path: 'linkedin-feed.png', fullPage: true });
+await new Promise(r => setTimeout(r, 2000));
+    // 5. 🔎 Go to search results
+    const searchUrl = `https://www.linkedin.com/search/results/people/?companySize=${company_size}&keywords=${encodeURIComponent(company)}`;
+   await page.evaluate(url => window.location.href = url, searchUrl);
+await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+await page.screenshot({ path: 'lsearcg', fullPage: true });
+    let currentPage = 1;
+    const maxPages = 2;
 
     while (currentPage <= maxPages) {
-      console.log(`[SCRAPER] Scraping page ${currentPage}`);
-
-      for (let i = 0; i < 3; i++) {
+      console.log(`🔍 Scraping page ${currentPage}`);
+      for (let i = 0; i <=2; i++) {
+         await simulateMouseMove(page);
         await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-        await new Promise((resolve) => setTimeout(resolve, 2500));
+        await new Promise((r) => setTimeout(r, 2000));
       }
 
-      await page.waitForSelector('ul[role="list"] > li', { timeout: 20000 });
+      await page.waitForSelector('ul[role="list"] > li', { timeout: 15000 });
 
       const scrapedProfiles = await page.evaluate(() => {
         const results = [];
         const cards = document.querySelectorAll('ul[role="list"] > li');
+        cards.forEach((card) => {
+  card.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+});
+
         cards.forEach((card) => {
           const getText = (selector, root = card) =>
             root.querySelector(selector)?.innerText.trim() || "";
@@ -160,75 +138,56 @@ await page.goto("https://www.linkedin.com/feed/", {
           const name = getText('span[aria-hidden="true"]');
           const headline = Education;
           const mutual = getText(".entity-result__insights");
-          const profileLink =
-            card.querySelector('a[href*="/in/"]')?.href?.split("?")[0] || "";
+          const profileLink = card.querySelector('a[href*="/in/"]')?.href?.split("?")[0] || "";
 
-          results.push({
-            name,
-            headline,
-            location,
-            Education,
-            mutualConnections: mutual,
-            profileUrl: profileLink,
-          });
+          results.push({ name, headline, location, Education, mutualConnections: mutual, profileUrl: profileLink });
         });
         return results.slice(0, 25);
       });
 
-      for (const profile of scrapedProfiles) {
-        if (
-          profile.name &&
-          profile.profileUrl &&
-          profile.headline &&
-          profile.location
-        ) {
+      scrapedProfiles.forEach((profile) => {
+        if (profile.name && profile.profileUrl) {
           leads.push({
             name: profile.name,
             url: profile.profileUrl,
             headline: profile.headline,
             location: profile.location,
             connectedAt: new Date().toISOString(),
-            connectionRequest: false, // should be true if you intend to mark them
+            connectionRequest: false,
             firstMessageSent: false,
-         
             replied: false,
           });
         }
-      }
-console.log(leads);
-      // Send connection requests
-      // await page.evaluate(async () => {
-      //   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-      //   const connectButtons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
-      //   for (let i = 0; i < connectButtons.length; i++) {
-      //     try {
-      //       connectButtons[i].click();
-      //       await delay(1500);
-      //       const addNoteBtn = document.querySelector('button[aria-label="Send without a note"]');
-      //       if (addNoteBtn) {
-      //         addNoteBtn.click();
-      //         await delay(1000);
-      //       }
-      //     } catch (e) {
-      //       console.warn(`❌ Failed at index ${i}`, e);
-      //     }
-      //   }
-      // });
+      });
+
+      // 🚀 Try to connect with people
+      await page.evaluate(async () => {
+        const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+        const buttons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
+        for (let i = 0; i < buttons.length; i++) {
+          try {
+            buttons[i].click();
+            await delay(1500);
+            const sendBtn = document.querySelector('button[aria-label="Send without a note"]');
+            if (sendBtn) {
+              sendBtn.click();
+              await delay(1000);
+            }
+          } catch (e) {
+            console.warn(`❌ Connection failed at ${i}`, e);
+          }
+        }
+      });
 
       const nextBtn = await page.$('button[aria-label="Next"]');
       if (!nextBtn) break;
 
-      await Promise.all([
-        nextBtn.click(),
-        page.waitForNavigation({ waitUntil: "domcontentloaded" }),
-      ]);
-
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await Promise.all([nextBtn.click(), page.waitForNavigation({ waitUntil: "domcontentloaded" })]);
+      await new Promise((r) => setTimeout(r, 3000));
       currentPage++;
     }
     try {
-      let token =
-        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ltcGFjdG1pbmR6LmluL2NsaWVudC9zY2FsZWxlYWRzL2FwaS9sb2dpbiIsImlhdCI6MTc0NzMwOTczMiwiZXhwIjoxNzQ3MzExNTMyLCJuYmYiOjE3NDczMDk3MzIsImp0aSI6ImFKSGZ2eEdlUzBTRGcxOTAiLCJzdWIiOiIzMyIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjciLCJlbWFpbCI6IkRlbHRhQGdtYWlsLmNvbSIsImZvcm1fZmlsbGVkIjp0cnVlLCJtZXNzYWdlc19maWxsZWQiOnRydWV9.PHlcrnnjFubEL-MtveiwIfe_IEWlpELXfpQnWiUmILw";
+  
       await axios.post(
         "https://impactmindz.in/client/scaleleads/api/linkedin/leads",
         {
@@ -244,19 +203,27 @@ console.log(leads);
     } catch (err) {
       console.log(err);
     }
-
     await browser.close();
-    return res.status(200).json({
-      status: true,
-      message: "✅ Scraping and connection requests completed!",
-      scraped: leads,
-    });
-  } catch (error) {
-    console.error("❌ Scraping error:", error.message);
+    return res.status(200).json({ status: true, scraped: leads, message: "✅ Scraping and connections done!" });
+  } catch (err) {
+    console.error("❌ Scraper failed:", err.message);
     if (browser) await browser.close();
-    return res.status(500).send("Scraping failed: " + error.message);
+    return res.status(500).send("Error: " + err.message);
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 export const scrapfromcsv = async(req,res)=>{
   //   app.post('/scrape-from-csv', upload.single('csvFile'), async (req, res) => {
