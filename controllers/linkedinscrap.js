@@ -3,11 +3,12 @@ import puppeteer from "puppeteer-extra";
 import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
+import 'dotenv/config'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 puppeteer.use(StealthPlugin());
 
-const BROWSER_WS = `wss://brd-customer-hl_6ed9d8e4-zone-scraping_browser1:zd2q5gl4gqat@brd.superproxy.io:9222`;
+const BROWSER_WS = process.env.SCRAPER_URL;
 
 function simulateMouseMove(page) {
   return page.mouse.move(
@@ -27,7 +28,7 @@ export const linkedinscrap = async (req, res) => {
   // 1. 🔐 Fetch li_at token from your backend API
   let li_at_token = "";
   try {
-    const tokenRes = await axios.get(`https://impactmindz.in/client/scaleleads/api/linkedin-token/${sub}`,{
+    const tokenRes = await axios.get(`${process.env.BASE_URL}/api/linkedin-token/${sub}`,{
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -48,7 +49,7 @@ export const linkedinscrap = async (req, res) => {
   let company_size = "";
   let company = "";
   try {
-    const profileRes = await axios.get(`https://impactmindz.in/client/scaleleads/api/user/profile/${sub}`,{
+    const profileRes = await axios.get(`${process.env.BASE_URL}/api/user/profile/${sub}`,{
       headers:{
         Authorization: `Bearer ${token}`,
       }
@@ -57,7 +58,7 @@ const {data} = profileRes;
 
 
     const profile = data?.profile?.[0];
-    console.log(profile);
+
 
     company_size = profile?.company_size;
     company = profile?.sector;
@@ -67,27 +68,20 @@ const {data} = profileRes;
 
   let browser;
   try {
-    browser = await puppeteer.connect({
-      browserWSEndpoint: BROWSER_WS
+    // browser = await puppeteer.connect({
+    //   browserWSEndpoint: BROWSER_WS
+    
+    // });
+    browser = await puppeteer.launch({
+      headless:false
     
     });
-//     browser = await puppeteer.launch({
-//       //executablePath:"/usr/bin/google-chrome",
-//       headless: false,
-//  args: [
-//     '--no-sandbox',
-//     '--disable-setuid-sandbox',
-//     '--window-size=1200,800'
-//   ],
-//   defaultViewport: {
-//     width: 1200,
-//     height: 800,
-//   },
-//     })
+
 
     const page = await browser.newPage();
 
-await page.goto("https://www.linkedin.com");
+await page.goto("https://www.linkedin.com/feed");
+console.log(li_at_token);
 await page.evaluate((liAt) => {
   document.cookie = `li_at=${liAt}; domain=.linkedin.com; path=/; secure; SameSite=None`;
 }, li_at_token);
@@ -101,25 +95,25 @@ await page.waitForNavigation({ waitUntil: "domcontentloaded" });
       throw new Error("Invalid li_at token. Login page loaded.");
     }
     console.log("✅ Logged in successfully using li_at cookie");
-await page.screenshot({ path: 'linkedin-feed.png', fullPage: true });
-await new Promise(r => setTimeout(r, 2000));
+
+await new Promise(r => setTimeout(r, 500));
     // 5. 🔎 Go to search results
     const searchUrl = `https://www.linkedin.com/search/results/people/?companySize=${company_size}&keywords=${encodeURIComponent(company)}`;
    await page.evaluate(url => window.location.href = url, searchUrl);
 await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
-await page.screenshot({ path: 'lsearcg', fullPage: true });
+
     let currentPage = 1;
     const maxPages = 2;
 
     while (currentPage <= maxPages) {
-      console.log(`🔍 Scraping page ${currentPage}`);
+
       for (let i = 0; i <=2; i++) {
          await simulateMouseMove(page);
         await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-        await new Promise((r) => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 500));
       }
 
-      await page.waitForSelector('ul[role="list"] > li', { timeout: 15000 });
+      await page.waitForSelector('ul[role="list"] > li', { timeout: 2000 });
 
       const scrapedProfiles = await page.evaluate(() => {
         const results = [];
@@ -167,11 +161,11 @@ await page.screenshot({ path: 'lsearcg', fullPage: true });
         for (let i = 0; i < buttons.length; i++) {
           try {
             buttons[i].click();
-            await delay(1500);
+            await delay(500);
             const sendBtn = document.querySelector('button[aria-label="Send without a note"]');
             if (sendBtn) {
               sendBtn.click();
-              await delay(1000);
+              await delay(500);
             }
           } catch (e) {
             console.warn(`❌ Connection failed at ${i}`, e);
@@ -183,13 +177,13 @@ await page.screenshot({ path: 'lsearcg', fullPage: true });
       if (!nextBtn) break;
 
       await Promise.all([nextBtn.click(), page.waitForNavigation({ waitUntil: "domcontentloaded" })]);
-      await new Promise((r) => setTimeout(r, 3000));
+      await new Promise((r) => setTimeout(r, 500));
       currentPage++;
     }
     try {
   
       await axios.post(
-        "https://impactmindz.in/client/scaleleads/api/linkedin/leads",
+        `${process.env.BASE_URL}/api/linkedin/leads`,
         {
         campaign_id: 11,
           scraped: leads,
