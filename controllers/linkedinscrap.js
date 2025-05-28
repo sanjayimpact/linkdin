@@ -68,14 +68,14 @@ const {data} = profileRes;
 
   let browser;
   try {
-    // browser = await puppeteer.connect({
-    //   browserWSEndpoint: BROWSER_WS
-    
-    // });
-    browser = await puppeteer.launch({
-      headless:false
+    browser = await puppeteer.connect({
+      browserWSEndpoint: BROWSER_WS
     
     });
+    // browser = await puppeteer.launch({
+    //   headless:false
+    
+    // });
 
 
     const page = await browser.newPage();
