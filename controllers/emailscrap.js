@@ -355,9 +355,8 @@ transporterInstance.verify((error, success) => {
 
 
 //done 
-export const checkemailreplied = async (req,res) => {
-  const{token,messageId} = req.body;
- 
+export const checkemailreplied = async (token,messageId) => {
+
 
   try {
     // Step 1: List inbox messages from last 3 days
@@ -414,9 +413,8 @@ export const checkemailreplied = async (req,res) => {
 
 
 
-export const checkoutlookreplied = async (req, res) => {
-  const { token, messageId } = req.body;
-
+export const checkoutlookreplied = async (token,messageId) => {
+ 
   if (!token || !messageId) {
     return res.status(400).json({ error: 'Missing token or messageId' });
   }
@@ -461,18 +459,18 @@ const inboxMessages = await axios.get(
 
 
 
-export const checksmtpreplied = async (req, res) => {
-  const targetMessageId = req.body.message_id;
+export const checksmtpreplied = async (user,pass,targetMessageId) => {
+
 
   if (!targetMessageId) {
     return res.status(400).json({ error: 'Missing message_id in request' });
   }
 
-  console.log('🔍 Checking replies for Message-ID:', targetMessageId);
+ 
 
   const imap = new Imap({
-    user: 'sanjay.impactmindz@gmail.com',
-    password: 'epaytdntgphxxnxz', // App Password (use .env in production)
+    user: user,
+    password: pass, // App Password (use .env in production)
     host: 'imap.gmail.com',
     port: 993,
     tls: true,
@@ -571,7 +569,7 @@ export const checksmtpreplied = async (req, res) => {
 
 
 
-
+//configure the refresh token 
 
 
 
@@ -616,4 +614,42 @@ export const sendemail = async(req,res)=>{
     console.log(err);
   }
 
+}
+
+export const checkAllReplies = async (req, res) => {
+  const leadsToCheck = await axios.get(`${process.env.BASE_URL}/api/email-leads?replied=false`);
+
+  for (const lead of leadsToCheck.data.data) {
+    let isReplied = false;
+
+    try {
+      if (lead.source === 'gmail') {
+        isReplied = await checkemailreplied(lead.token, lead.msgid);
+      } else if (lead.source === 'outlook') {
+        isReplied = await checkoutlookreplied(lead.token, lead.msgid);
+      } else if (lead.source === 'smtp') {
+        isReplied = await checksmtpreplied(lead.email, lead.password, lead.msgid);
+      }
+
+      if (isReplied) {
+        await axios.patch(`${process.env.BASE_URL}/api/email-leads/${lead.uid}`, {
+          replied: true,
+        });
+        console.log(`✅ Updated: ${lead.email}`);
+      }
+
+    } catch (err) {
+      console.error(`❌ Error checking reply for ${lead.email}:`, err.message);
+    }
+  }
+
+  return res.status(200).json({ message: 'Reply check complete' });
+};
+
+export const testing = async(req,res)=>{
+  try{
+       console.log("run every 2 minutes later")
+  }catch(err){
+    console.log(err)
+  }
 }
