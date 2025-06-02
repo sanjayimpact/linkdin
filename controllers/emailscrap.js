@@ -649,6 +649,7 @@ export const checkAllReplies = async (req, res) => {
 export const testing = async(req,res)=>{
   try{
        console.log("run every 2 minutes later")
+       return res.json({message:"after 2 minutes"})
   }catch(err){
     console.log(err)
   }
