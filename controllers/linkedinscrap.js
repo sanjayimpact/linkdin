@@ -8,19 +8,26 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 puppeteer.use(StealthPlugin());
 
-const BROWSER_WS = process.env.SCRAPER_URL;
+const BROWSER_WS = 'wss://brd-customer-hl_6ed9d8e4-zone-scraping_browser1:zd2q5gl4gqat@brd.superproxy.io:9222';
 
-function simulateMouseMove(page) {
-  return page.mouse.move(
-    Math.floor(Math.random() * 1000),
-    Math.floor(Math.random() * 600),
-    { steps: 5 + Math.floor(Math.random() * 10) }
-  );
-}
+const simulateMouseMove = async (page) => {
+  const box = await page.viewport();
+  for (let i = 0; i < 10; i++) {
+    const x = Math.floor(Math.random() * box.width);
+    const y = Math.floor(Math.random() * box.height);
+    await page.mouse.move(x, y, { steps: 5 });
+    await page.waitForTimeout(Math.random() * 500 + 300); // 300–800ms
+  }
+};
+
 
 
 export const linkedinscrap = async (req, res) => {
-  const { id } = req.params;
+  const { body } = req.body;
+  const{id,company_size,sector} = body;
+  const myCookies = req.cookies;
+  let ldtoken = myCookies?.user_token;
+
   const{sub} = req.user;
   const token = req.token;
 
@@ -36,7 +43,8 @@ export const linkedinscrap = async (req, res) => {
     const {data} = tokenRes;
     
   
-    li_at_token = data?.data?.linkedin_token;
+    li_at_token = ldtoken;
+    // li_at_token = data?.data?.linkedin_token;
 
     if (!li_at_token) throw new Error("Missing li_at token");
   } catch (err) {
@@ -46,30 +54,18 @@ export const linkedinscrap = async (req, res) => {
 
   // 2. 🔍 Fetch additional company info
   let leads = [];
-  let company_size = "";
-  let company = "";
-  try {
-    const profileRes = await axios.get(`${process.env.BASE_URL}/api/user/profile/${sub}`,{
-      headers:{
-        Authorization: `Bearer ${token}`,
-      }
-    });
-const {data} = profileRes;
+  let company_sizes = company_size;
+  let company = sector;
 
-
-    const profile = data?.profile?.[0];
-
-
-    company_size = profile?.company_size;
-    company = profile?.sector;
-  } catch (err) {
-    console.warn("⚠️ Failed to fetch profile info:", err.message);
-  }
 
   let browser;
   try {
+
+    const sessionId = `linkedin-${Math.floor(Math.random() * 100000)}`;
+const country = 'us';
+const rotatedWs = BROWSER_WS.replace(':', `-session-${sessionId}-country-${country}:`);
     browser = await puppeteer.connect({
-      browserWSEndpoint: BROWSER_WS
+      browserWSEndpoint: rotatedWs
     
     });
     // browser = await puppeteer.launch({
@@ -79,12 +75,20 @@ const {data} = profileRes;
 
 
     const page = await browser.newPage();
+await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0 Safari/537.36');
 
-await page.goto("https://www.linkedin.com/feed");
-console.log(li_at_token);
-await page.evaluate((liAt) => {
-  document.cookie = `li_at=${liAt}; domain=.linkedin.com; path=/; secure; SameSite=None`;
-}, li_at_token);
+// await page.evaluate((liAt) => {
+//   document.cookie = `li_at=${liAt}; domain=.linkedin.com; path=/; secure; SameSite=None`;
+// }, li_at_token);
+await page.setCookie({
+  name: 'li_at',
+  value: li_at_token,
+  domain: '.linkedin.com',
+  httpOnly: true,
+  secure: true,
+  sameSite: 'Lax',
+});
+
 
 await page.evaluate(() => location.href = "https://www.linkedin.com/feed");
 await page.waitForNavigation({ waitUntil: "domcontentloaded" });
@@ -98,7 +102,7 @@ await page.waitForNavigation({ waitUntil: "domcontentloaded" });
 
 await new Promise(r => setTimeout(r, 500));
     // 5. 🔎 Go to search results
-    const searchUrl = `https://www.linkedin.com/search/results/people/?companySize=${company_size}&keywords=${encodeURIComponent(company)}`;
+    const searchUrl = `https://www.linkedin.com/search/results/people/?companySize=${company_sizes}&keywords=${encodeURIComponent(company)}`;
    await page.evaluate(url => window.location.href = url, searchUrl);
 await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
 
@@ -110,10 +114,10 @@ await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
       for (let i = 0; i <=2; i++) {
          await simulateMouseMove(page);
         await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 1500));
       }
 
-      await page.waitForSelector('ul[role="list"] > li', { timeout: 2000 });
+      await page.waitForSelector('ul[role="list"] > li', { timeout: 8000 });
 
       const scrapedProfiles = await page.evaluate(() => {
         const results = [];
@@ -161,11 +165,11 @@ await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
         for (let i = 0; i < buttons.length; i++) {
           try {
             buttons[i].click();
-            await delay(500);
+            await delay(1000);
             const sendBtn = document.querySelector('button[aria-label="Send without a note"]');
             if (sendBtn) {
               sendBtn.click();
-              await delay(500);
+              await delay(1000);
             }
           } catch (e) {
             console.warn(`❌ Connection failed at ${i}`, e);
@@ -177,7 +181,7 @@ await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
       if (!nextBtn) break;
 
       await Promise.all([nextBtn.click(), page.waitForNavigation({ waitUntil: "domcontentloaded" })]);
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 1000));
       currentPage++;
     }
     try {
@@ -185,7 +189,7 @@ await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
       await axios.post(
         `${process.env.BASE_URL}/api/linkedin/leads`,
         {
-        campaign_id: 11,
+        campaign_id: id,
           scraped: leads,
         },
         {
@@ -208,7 +212,90 @@ await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
 
 
 
+export const linkedinid = async (req, res) => {
+  const { token } = req.body; // li_at
+ 
+  let browser;
+  try {
+    // browser = await puppeteer.connect({
+    //   browserWSEndpoint: BROWSER_WS,
+    // });
+   browser  = await puppeteer.launch({
+    headless: false,
+   })
+    const page = await browser.newPage();
 
+    // Set li_at cookie before loading any LinkedIn page
+   await page.evaluate((liAt) => {
+  document.cookie = `li_at=${liAt}; domain=.linkedin.com; path=/; secure; SameSite=None`;
+}, token);
+
+
+    await page.goto('https://www.linkedin.com/feed', {
+      waitUntil: 'domcontentloaded',
+    });
+
+    // Verify login
+    if (await page.$('input[name="session_key"]')) {
+      throw new Error('Invalid li_at token – login page loaded');
+    }
+
+    const profileName = await page.evaluate(() => {
+  const el = document.querySelector('h3.profile-card-name.text-heading-large');
+  return el ? el.innerText.trim() : null;
+});
+
+if (!profileName) throw new Error("Couldn't extract profile name");
+
+console.log('👤 Profile Name:', profileName);
+    console.log('✅ Logged into LinkedIn successfully');
+
+    // Fetch profile + email from internal API using browser context
+await page.waitForSelector('a[href^="/in/"]', { timeout: 10000 });
+
+    // Extract profile URL
+    const profilePath = await page.evaluate(() => {
+      const anchor = document.querySelector('a[href^="/in/"]');
+      return anchor ? anchor.getAttribute('href') : null;
+    });
+
+   if (!profilePath) throw new Error("Couldn't find any profile URL on feed");
+
+    const fullProfileURL = `https://www.linkedin.com${profilePath}`;
+    console.log('➡️ Navigating to profile:', fullProfileURL);
+
+    // Go to the profile page
+    await page.goto(fullProfileURL, { waitUntil: 'domcontentloaded' });
+
+// Click Contact Info link
+await page.waitForSelector('a[href*="/overlay/contact-info/"]', { timeout: 10000 });
+await page.click('a[href*="/overlay/contact-info/"]');
+
+// Wait for modal content
+await page.waitForSelector('.pv-contact-info__contact-type.ci-email a', { timeout: 10000 });
+
+// Extract email
+const email = await page.evaluate(() => {
+  const el = document.querySelector('.pv-contact-info__contact-type.ci-email a');
+  return el ? el.innerText.trim() : null;
+});
+
+    
+
+    await browser.close();
+
+    return res.status(200).json({
+      status: true,
+        profile: fullProfileURL,
+         name: profileName,
+         email:email
+    });
+  } catch (err) {
+    if (browser) await browser.close();
+    console.error('❌ Error:', err.message);
+    return res.status(500).json({ status: false, error: err.message });
+  }
+};
 
 
 

@@ -6,15 +6,21 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { apiRouter } from './routes/apirouter.js';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
+import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 
+dotenv.config();
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000',
+  credentials: true, // Allow cookies
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: true }));
-
+app.use(cookieParser());
 
 puppeteer.use(StealthPlugin());
 

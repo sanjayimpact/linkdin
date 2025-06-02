@@ -14,15 +14,19 @@
   "dependencies": {
     "axios": "^1.9.0",
     "body-parser": "^2.2.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
     "dotenv": "^16.5.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
+    "googleapis": "^149.0.0",
     "http-proxy-middleware": "^3.0.5",
     "https-proxy-agent": "^7.0.6",
+    "imap": "^0.8.19",
     "jsonwebtoken": "^9.0.2",
+    "mailparser": "^3.7.3",
     "multer": "^1.4.5-lts.2",
     "node-cron": "^4.0.3",
     "node-fetch": "^3.3.2",
@@ -34,6 +38,7 @@
     "passport-outlook": "^3.0.0",
     "puppeteer": "^24.8.0",
     "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "simple-parser": "^0.0.0"
   }
 }
