@@ -3,7 +3,7 @@ import { linkedinid, linkedinscrap } from '../controllers/linkedinscrap.js';
 
 import { authmiddleware } from '../middlewares/jwtauth.js';
 import { runjob } from '../controllers/automation.js';
-import { checkemailreplied, checkoutlookreplied, checkSMTPCredentials, checksmtpreplied, scrapemail, sendemail, sendemailSMTP, testing } from '../controllers/emailscrap.js';
+import { checkAllReplies, checkemailreplied, checkoutlookreplied, checkSMTPCredentials, checksmtpreplied, scrapemail, sendemail, sendemailSMTP, stopcompain } from '../controllers/emailscrap.js';
 
 export const apiRouter = express.Router();
 
@@ -19,4 +19,6 @@ apiRouter.post("/scrap",authmiddleware,linkedinscrap)
 .post('/replyoutlook',checkoutlookreplied)
 .post('/checksmtp',authmiddleware,checkSMTPCredentials)
 .post('/checkreply',checksmtpreplied)
-.get('/replycheck',testing)
+.get('/cronjob',checkAllReplies)
+.post('/stopcompain',authmiddleware,stopcompain);
+

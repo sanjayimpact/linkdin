@@ -3,9 +3,14 @@ import { sendEmail } from '../utils/Email/emailService.js';
 import nodemailer from 'nodemailer';
 import { followupHtml } from '../utils/EmailTemplates/followupEmail.js';
 import Imap from 'imap';
+import path from 'path';
+import cron from "node-cron";
+import fs from 'fs';
 import {simpleParser} from "mailparser"
 const API_KEY = process.env.API_KEY ||'RCteoxSZ4-myK2B-qu1aWg'; // Use .env in production
-
+const tokensFile = path.join(process.cwd(), 'tokens.json');
+const currentUserFile = path.join(process.cwd(), 'current_user.json');
+const start = path.join(process.cwd(), 'start.json');
  
 export const scrapemail = async (req, res) => {
   const{ body} = req.body;
@@ -13,12 +18,79 @@ export const scrapemail = async (req, res) => {
  const myCookie = req.cookies; // Access cookie here
 let gtoken = myCookie.gmail_access_token;
 let mstoken = myCookie.microsoft_access_token;
-let user = myCookie.uemail
-let pass = myCookie.uapppas
-let  msgHeaderId;
+let grefreshtoken = myCookie.gmail_refresh_token;
+let mrefreshtoken = myCookie.microsoft_refresh_token;
+let gtokenexpire = myCookie.gexpire;
+let mtokenexpire = myCookie.mexpire;
+let user = myCookie.uemail;
+let uemail = myCookie.gmail_user;
+let memail = myCookie.ms_email;
+let pass = myCookie.uapppas;
+let msgHeaderId;
 const token = req.token;
+  const{sub} = req.user;
+// store the token in json file 
+
 
   try {
+
+let tokens = [];
+let campaigns = [];
+if (fs.existsSync(tokensFile)) {
+  const content = fs.readFileSync(tokensFile, 'utf-8');
+  tokens = JSON.parse(content);
+}
+
+// Check if an entry exists for this user
+const existingIndex = tokens.findIndex(t => t.user_id === sub);
+
+
+
+if (existingIndex !== -1) {
+  const existing = tokens[existingIndex];
+
+  // ✅ If token is the same, skip updating
+  if (existing.token === token) {
+    console.log(`✅ Token already exists for user ${sub}, no update needed.`);
+  } else {
+    // ✅ Update token if it's different
+    tokens[existingIndex].token = token;
+    fs.writeFileSync(tokensFile, JSON.stringify(tokens, null, 2), 'utf-8');
+    console.log(`🔁 Token updated for user ${sub}`);
+  }
+} else {
+  // ✅ Add new entry if user_id doesn't exist
+  tokens.push({
+    user_id: sub,
+    token: token
+  });
+  fs.writeFileSync(tokensFile, JSON.stringify(tokens, null, 2), 'utf-8');
+  
+
+}
+  // Step 5: Save current_user.json
+  fs.writeFileSync(currentUserFile, JSON.stringify({ user_id: sub }, null, 2), 'utf-8');
+  
+ //save the compain id with flag
+  if (fs.existsSync(start)) {
+      const fileContent = fs.readFileSync(start, 'utf-8');
+      campaigns = JSON.parse(fileContent);
+    }
+
+    // Step 2: Check if cid exists
+    const index = campaigns.findIndex(item => item.cid === id);
+
+    if (index !== -1) {
+      // Update existing entry
+      campaigns[index].start = true;
+    } else {
+      // Add new entry
+      campaigns.push({ start: true, cid: id });
+    }
+
+    // Step 3: Write back updated array
+    fs.writeFileSync(start, JSON.stringify(campaigns, null, 2), 'utf-8');
+
     // 1. Search for people
     const response = await axios.post(
       'https://api.apollo.io/api/v1/mixed_people/search',
@@ -93,7 +165,8 @@ const{data} = checkRes;
 
 
 // Step 2: Build a Set of all existing UIDs
-const existingUids = new Set(data.data.map(item => item.uid));
+const existingUids = new Set(data.data.filter(item=>item.user_id===sub)
+  .map(item => item.uid));
     for (const lead of validResults) {
 
         if (existingUids.has(lead.id)) {
@@ -107,10 +180,14 @@ const existingUids = new Set(data.data.map(item => item.uid));
     }
     if(user && pass){
       msgHeaderId = await sendemailSMTP(user,pass);
-      console.log(msgHeaderId);
+
+    }
+    if(mstoken){
+     msgHeaderId = await  sendViaMicrosoft(mstoken, "sanjay.impactmindz@gmail.com")
     }
 
     leadsWithMsgId.push({
+      user_email:uemail ||memail ||user,
       uid: lead.id,
       name: lead.name,
       email: lead.email,
@@ -122,7 +199,13 @@ const existingUids = new Set(data.data.map(item => item.uid));
       country: lead.country,
       emailsend:true,
       replied: false,
-      msgid: msgHeaderId ||"89978"
+      msgid: msgHeaderId,
+      token:gtoken || mstoken || null,
+      source:gtoken?'gmail':mstoken?'outlook':'smtp',
+      refreshtoken:grefreshtoken||mrefreshtoken|| null,
+      expire_at:gtokenexpire || mtokenexpire ||null,
+      user:user,
+      pass:pass
     });
   } catch (err) {
     console.error(`❌ Failed to send Gmail to ${lead.email}:`, err.message);
@@ -131,42 +214,27 @@ const existingUids = new Set(data.data.map(item => item.uid));
 
 
 
-// const saveRes = await axios.post(
-//   `${process.env.BASE_URL}/api/email-leads`,
-//   {
-//     campaign_id: campaignId,
-//     leads: leadsWithMsgId
-//   },
-//   {
-//     headers: {
-//       Authorization: `Bearer ${token}`,
-//       'Content-Type': 'application/json',
-//     },
-//   }
-// );
-
-
-//get token to automation 
-   if('microsoft_access_token' in myCookie){
-    let mstoken = myCookie.microsoft_access_token;
-   
-     for (const lead of validResults) {
-    
-    try {
-     let msgid =  await sendViaMicrosoft(mstoken, "sanjay.impactmindz@gmail.com");
-     console.log(msgid,'id message');
-      console.log(`✅ Email sent to ${lead.email}`);
-    } catch (err) {
-      console.error(`❌ Failed to send email to ${lead.email}:`, err.message);
-    }
+if(leadsWithMsgId.length>0){
+  const saveRes = await axios.post(
+  `${process.env.BASE_URL}/api/email-leads`,
+  {
+    campaign_id: campaignId,
+    leads: leadsWithMsgId
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
   }
-   
-   }    
+);
+}
+
+
 
     
 
    
-  
 
     return res.status(200).json({message:"successfully stored", contacts: validResults });
 
@@ -394,22 +462,18 @@ export const checkemailreplied = async (token,messageId) => {
 
       if (inReplyTo == messageId || (references && references.includes(messageId))) {
         console.log(`✅ Reply found to message ID: ${messageId}`);
-        return res.status(200).json({ replied: true, message: 'Reply found' });
+        return true;
       }
     }
 
-    console.log(`❌ No reply found to message ID: ${messageId}`);
-    return res.status(200).json({ replied: false, message: 'No reply yet' });
+   
+     return false;
 
   } catch (err) {
     console.error('❌ Error checking Gmail replies:', err.response?.data || err.message);
-    return res.status(500).json({ error: 'Failed to check email replies' });
+    
   }
 };
-
-
-
-
 
 
 
@@ -454,9 +518,6 @@ const inboxMessages = await axios.get(
     return res.status(500).json({ error: 'Failed to check replies' });
   }
 };
-
-
-
 
 
 export const checksmtpreplied = async (user,pass,targetMessageId) => {
@@ -569,7 +630,7 @@ export const checksmtpreplied = async (user,pass,targetMessageId) => {
 
 
 
-//configure the refresh token 
+
 
 
 
@@ -616,8 +677,46 @@ export const sendemail = async(req,res)=>{
 
 }
 
-export const checkAllReplies = async (req, res) => {
-  const leadsToCheck = await axios.get(`${process.env.BASE_URL}/api/email-leads?replied=false`);
+// export const refreshGmailToken = async (refreshToken) => {
+//   console.log(process.env.GOOGLE_CLIENT_ID);
+//   try {
+//     const res = await axios.post('https://oauth2.googleapis.com/token', null, {
+//       params: {
+//         client_id: process.env.GOOGLE_CLIENT_ID,
+//         client_secret: process.env.GOOGLE_CLIENT_SECRET,
+//         refresh_token: refreshToken,
+//         grant_type: 'refresh_token'
+//       }
+//     });
+//     console.log(res);
+
+//     return res.data.access_token;
+//   } catch (err) {
+//     console.error('❌ Failed to refresh Gmail token:', err.response?.data || err.message);
+//     return null;
+//   }
+// };
+
+
+
+export const checkAllReplies = async() => {
+
+  const currentUser = JSON.parse(fs.readFileSync(currentUserFile, 'utf-8'));
+    const userId = currentUser.user_id;
+      const tokens = JSON.parse(fs.readFileSync(tokensFile, 'utf-8'));
+       const userEntry = tokens.find(t => t.user_id === userId);
+       let utoken = userEntry.token;
+
+
+  const leadsToCheck = await axios.get(`${process.env.BASE_URL}/api/leads/unreplied`,{
+    headers: {
+      Authorization: `Bearer ${utoken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+
+
 
   for (const lead of leadsToCheck.data.data) {
     let isReplied = false;
@@ -625,6 +724,14 @@ export const checkAllReplies = async (req, res) => {
     try {
       if (lead.source === 'gmail') {
         isReplied = await checkemailreplied(lead.token, lead.msgid);
+     
+    
+        // if(isReplied.success===false && isReplied.status===401){
+        //   console.log("hello");
+        //      let response = await refreshGmailToken(lead.refreshtoken);
+        //      console.log(response);
+           
+        // }
       } else if (lead.source === 'outlook') {
         isReplied = await checkoutlookreplied(lead.token, lead.msgid);
       } else if (lead.source === 'smtp') {
@@ -632,10 +739,22 @@ export const checkAllReplies = async (req, res) => {
       }
 
       if (isReplied) {
-        await axios.patch(`${process.env.BASE_URL}/api/email-leads/${lead.uid}`, {
-          replied: true,
-        });
+        console.log('hello')
+     const reply =     await axios.patch(`${process.env.BASE_URL}/api/email-leads/${lead.id}/replied`,{replied:true},
+      
+{
+    headers: {
+      Authorization: `Bearer ${utoken}`,
+      'Content-Type': 'application/json',
+    }
+}
+
+          
+        );
+       
         console.log(`✅ Updated: ${lead.email}`);
+      }else{
+        console.log(`❌ Not replied: ${lead.email}`);
       }
 
     } catch (err) {
@@ -643,14 +762,38 @@ export const checkAllReplies = async (req, res) => {
     }
   }
 
-  return res.status(200).json({ message: 'Reply check complete' });
+return { success: true };
+
 };
 
-export const testing = async(req,res)=>{
+
+
+
+
+cron.schedule("* * * * *", async() => {
+ 
+   const statcron = JSON.parse(fs.readFileSync(start, 'utf-8'));
+   if(statcron.start){
+    await checkAllReplies();
+   }else{
+    console.log('cron job stopped');
+   }
+  
+
+});
+
+export const stopcompain = async(req,res)=>{
   try{
-       console.log("run every 2 minutes later")
-       return res.json({message:"after 2 minutes"})
+    const content = JSON.parse(fs.readFileSync(start, 'utf-8'));
+
+    // Step 2: Update the 'start' value in the object
+    content.start = false;
+
+    // Step 3: Write the updated object back to the file
+    fs.writeFileSync(start, JSON.stringify(content, null, 2));
+    return res.json({message:"Compain has been stopped",isSuccess:true})
   }catch(err){
     console.log(err)
   }
+
 }
