@@ -24,6 +24,7 @@ export const scrapemail = async (req, res) => {
   const {  sector, company_size, id } = body;
  const myCookie = req.cookies; // Access cookie here
 let gtoken = myCookie.gmail_access_token;
+console.log(gtoken);
 let mstoken = myCookie.microsoft_access_token;
 let grefreshtoken = myCookie.gmail_refresh_token;
 let mrefreshtoken = myCookie.microsoft_refresh_token;
