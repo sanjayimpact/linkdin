@@ -7,17 +7,18 @@ import path from 'path';
 import cron from "node-cron";
 import fs from 'fs';
 import {simpleParser} from "mailparser"
-import qs from 'qs'
-const API_KEY = process.env.API_KEY ||'RCteoxSZ4-myK2B-qu1aWg'; // Use .env in production
-// const tokensFile = path.join(process.cwd(), 'tokens.json');
-// const currentUserFile = path.join(process.cwd(), 'current_user.json');
 
-// const start = path.join(process.cwd(), 'start.json');
-// const currentcompain = path.join(process.cwd(),'currentcompain.json');
- const tokensFile = path.join("/tmp", "tokens.json");
-const currentUserFile = path.join("/tmp", "current_user.json");
-const start = path.join("/tmp", "start.json");
-const currentcompain = path.join("/tmp", "currentcompain.json");
+import qs from 'qs'
+import { fileURLToPath } from 'url';
+const API_KEY = process.env.API_KEY ||'RCteoxSZ4-myK2B-qu1aWg'; // Use .env in production
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const tokensFile = path.join(__dirname, 'tokens.json');
+const currentUserFile = path.join(__dirname, 'current_user.json');
+
+const start = path.join(__dirname, 'start.json');
+const currentcompain = path.join(__dirname,'currentcompain.json');
+ 
 export const scrapemail = async (req, res) => {
   const{ body} = req.body;
   const {  sector, company_size, id } = body;
