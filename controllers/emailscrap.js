@@ -179,15 +179,15 @@ const existingUids = new Set(data.data.filter(item=>item.user_id===sub)
   }
   try {
     if(gtoken){
-      msgHeaderId = await sendViaGmail(gtoken, "borasanju84@gmail.com",utoken);
+      msgHeaderId = await sendViaGmail(gtoken, lead.email,utoken,lead.name);
 
     }
     if(user && pass){
-      msgHeaderId = await sendemailSMTP(user,pass,utoken);
+      msgHeaderId = await sendemailSMTP(user,pass,lead.email,utoken,lead.name);
 
     }
     if(mstoken){
-     msgHeaderId = await  sendViaMicrosoft(mstoken, "sanjay.impactmindz@gmail.com",utoken)
+     msgHeaderId = await  sendViaMicrosoft(mstoken, lead.email,utoken,lead.name)
     }
 
 if (lead.email && lead.email !== "No email found") {
@@ -256,7 +256,7 @@ if(leadsWithMsgId.length>0){
 // helper functions
 
 
-const sendViaGmail = async (token, toEmail,utoken) => {
+const sendViaGmail = async (token, toEmail,utoken,name) => {
   // get the message 
  let messagetemplate = await axios.get(`${process.env.BASE_URL}/api/user/messages/latest`,{
 headers: {
@@ -266,7 +266,7 @@ headers: {
  });
 const {data}= messagetemplate;
 let content = data?.data.email_content;
-let editcontent = content.replace("[Director's Name]","sanju baba")
+let editcontent = content.replace("[Director's Name]",`${name}`)
 
   const message = [
     `To: ${toEmail}`,
@@ -304,8 +304,16 @@ let editcontent = content.replace("[Director's Name]","sanju baba")
  return messageIdHeader;
 };
 
-const sendViaMicrosoft = async (token, toEmail) => {
-
+const sendViaMicrosoft = async (token, toEmail,utoken,name) => {
+  let messagetemplate = await axios.get(`${process.env.BASE_URL}/api/user/messages/latest`,{
+headers: {
+      Authorization: `Bearer ${utoken}`,
+      'Content-Type': 'application/json',
+    },
+ });
+const {data}= messagetemplate;
+let content = data?.data.email_content;
+let editcontent = content.replace("[Director's Name]",`${name}`)
   try {
     // Step 1: Create draft
     const draftRes = await axios.post(
@@ -314,7 +322,7 @@ const sendViaMicrosoft = async (token, toEmail) => {
         subject: "Outlook Test",
         body: {
           contentType: "Text",
-          content: "This is a test email 👍",
+          content: editcontent,
         },
         toRecipients: [{ emailAddress: { address: toEmail } }],
       },
@@ -351,14 +359,23 @@ const sendViaMicrosoft = async (token, toEmail) => {
 };
 
 
-export const sendemailSMTP = async (user, pass) => {
+export const sendemailSMTP = async (user, pass,toEmail,utoken,name) => {
 
   if(!user || !pass){
     return;
   }
 
 const messageId = `<${Date.now()}-${Math.random()}@gmail.com>`;
-  
+   let messagetemplate = await axios.get(`${process.env.BASE_URL}/api/user/messages/latest`,{
+headers: {
+      Authorization: `Bearer ${utoken}`,
+      'Content-Type': 'application/json',
+    },
+ });
+const {data}= messagetemplate;
+let content = data?.data.email_content;
+let editcontent = content.replace("[Director's Name]",`${name}`)
+
   try{
   const transporterInstance = nodemailer.createTransport({
   host: "smtp.gmail.com", // Correct SMTP server
@@ -384,10 +401,9 @@ transporterInstance.verify((error, success) => {
  const sendmail = await sendEmail(
   transporterInstance,
         user,
-        "borasanju84@gmail.com",
-        "Boost Your Website Conversions 🚀",
-        followupHtml("Boost Your Website Conversions 🚀", "We noticed you might benefit from high-converting landing pages and automated funnels. Our team specializes in helping businesses like yours increase leads and sales.",
-  "Schedule a Free Call"),
+        toEmail,
+        "ScaleLead Email",
+        `${editcontent}`,
 
       );
       let messageId = sendmail?.messageId;
