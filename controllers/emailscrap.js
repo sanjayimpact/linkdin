@@ -179,7 +179,7 @@ const existingUids = new Set(data.data.filter(item=>item.user_id===sub)
   }
   try {
     if(gtoken){
-      msgHeaderId = await sendViaGmail(gtoken, lead.email,utoken,lead.name);
+      msgHeaderId = await sendViaGmail(gtoken, "sanjubora84@gmail.com",utoken,lead.name);
 
     }
     if(user && pass){
