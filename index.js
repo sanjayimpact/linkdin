@@ -15,7 +15,7 @@ const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: 'https://scale-leads-jet.vercel.app/',
   credentials: true, // Allow cookies
 }));
 app.use(express.json());
