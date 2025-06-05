@@ -9,12 +9,15 @@ import fs from 'fs';
 import {simpleParser} from "mailparser"
 import qs from 'qs'
 const API_KEY = process.env.API_KEY ||'RCteoxSZ4-myK2B-qu1aWg'; // Use .env in production
-const tokensFile = path.join(process.cwd(), 'tokens.json');
-const currentUserFile = path.join(process.cwd(), 'current_user.json');
-console.log("create a file")
-const start = path.join(process.cwd(), 'start.json');
-const currentcompain = path.join(process.cwd(),'currentcompain.json');
- 
+// const tokensFile = path.join(process.cwd(), 'tokens.json');
+// const currentUserFile = path.join(process.cwd(), 'current_user.json');
+
+// const start = path.join(process.cwd(), 'start.json');
+// const currentcompain = path.join(process.cwd(),'currentcompain.json');
+ const tokensFile = path.join("/tmp", "tokens.json");
+const currentUserFile = path.join("/tmp", "current_user.json");
+const start = path.join("/tmp", "start.json");
+const currentcompain = path.join("/tmp", "currentcompain.json");
 export const scrapemail = async (req, res) => {
   const{ body} = req.body;
   const {  sector, company_size, id } = body;
