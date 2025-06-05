@@ -7,10 +7,12 @@ import path from 'path';
 import cron from "node-cron";
 import fs from 'fs';
 import {simpleParser} from "mailparser"
+import qs from 'qs'
 const API_KEY = process.env.API_KEY ||'RCteoxSZ4-myK2B-qu1aWg'; // Use .env in production
 const tokensFile = path.join(process.cwd(), 'tokens.json');
 const currentUserFile = path.join(process.cwd(), 'current_user.json');
 const start = path.join(process.cwd(), 'start.json');
+const currentcompain = path.join(process.cwd(),'currentcompain.json');
  
 export const scrapemail = async (req, res) => {
   const{ body} = req.body;
@@ -28,6 +30,7 @@ let memail = myCookie.ms_email;
 let pass = myCookie.uapppas;
 let msgHeaderId;
 const token = req.token;
+const utoken = req.token;
   const{sub} = req.user;
 // store the token in json file 
 
@@ -70,6 +73,7 @@ if (existingIndex !== -1) {
 }
   // Step 5: Save current_user.json
   fs.writeFileSync(currentUserFile, JSON.stringify({ user_id: sub }, null, 2), 'utf-8');
+  fs.writeFileSync(currentcompain, JSON.stringify({ cid: id }, null, 2), 'utf-8');
   
  //save the compain id with flag
   if (fs.existsSync(start)) {
@@ -85,7 +89,7 @@ if (existingIndex !== -1) {
       campaigns[index].start = true;
     } else {
       // Add new entry
-      campaigns.push({ start: true, cid: id });
+      campaigns.push({ start: true, cid: id,uid:sub });
     }
 
     // Step 3: Write back updated array
@@ -95,8 +99,8 @@ if (existingIndex !== -1) {
     const response = await axios.post(
       'https://api.apollo.io/api/v1/mixed_people/search',
       {
-        page:1,
-        per_page:1,
+        page:2,
+        per_page:15,
         person_titles: [sector],
        
         organization_num_employees_ranges:[company_size]
@@ -150,7 +154,7 @@ if (existingIndex !== -1) {
         }
       })
     );
-
+console.log(detailedContacts);
     const validResults = detailedContacts.filter(Boolean);
     // let msgHeaderId =await sendViaGmail(gtoken, lead.email);
     
@@ -175,38 +179,40 @@ const existingUids = new Set(data.data.filter(item=>item.user_id===sub)
   }
   try {
     if(gtoken){
-      msgHeaderId = await sendViaGmail(gtoken, "borasanju84@gmail.com");
+      msgHeaderId = await sendViaGmail(gtoken, "borasanju84@gmail.com",utoken);
 
     }
     if(user && pass){
-      msgHeaderId = await sendemailSMTP(user,pass);
+      msgHeaderId = await sendemailSMTP(user,pass,utoken);
 
     }
     if(mstoken){
-     msgHeaderId = await  sendViaMicrosoft(mstoken, "sanjay.impactmindz@gmail.com")
+     msgHeaderId = await  sendViaMicrosoft(mstoken, "sanjay.impactmindz@gmail.com",utoken)
     }
 
-    leadsWithMsgId.push({
-      user_email:uemail ||memail ||user,
-      uid: lead.id,
-      name: lead.name,
-      email: lead.email,
-      title: lead.title,
-      company: lead.company,
-      linkedin: lead.linkedin,
-      State: lead.state,
-      city: lead.city,
-      country: lead.country,
-      emailsend:true,
-      replied: false,
-      msgid: msgHeaderId,
-      token:gtoken || mstoken || null,
-      source:gtoken?'gmail':mstoken?'outlook':'smtp',
-      refreshtoken:grefreshtoken||mrefreshtoken|| null,
-      expire_at:gtokenexpire || mtokenexpire ||null,
-      user:user,
-      pass:pass
-    });
+if (lead.email && lead.email !== "No email found") {
+  leadsWithMsgId.push({
+    user_email: uemail || memail || user,
+    uid: lead.id,
+    name: lead.name,
+    email: lead.email,
+    title: lead.title,
+    company: lead.company,
+    linkedin: lead.linkedin,
+    State: lead.state,
+    city: lead.city,
+    country: lead.country,
+    emailsend: true,
+    replied: false,
+    msgid: msgHeaderId,
+    token: gtoken || mstoken || null,
+    source: gtoken ? "gmail" : mstoken ? "outlook" : "smtp",
+    refreshtoken: grefreshtoken || mrefreshtoken || null,
+    expire_at: gtokenexpire || mtokenexpire || null,
+    user: user,
+    pass: pass
+  });
+}
   } catch (err) {
     console.error(`❌ Failed to send Gmail to ${lead.email}:`, err.message);
   }
@@ -250,12 +256,23 @@ if(leadsWithMsgId.length>0){
 // helper functions
 
 
-const sendViaGmail = async (token, toEmail) => {
+const sendViaGmail = async (token, toEmail,utoken) => {
+  // get the message 
+ let messagetemplate = await axios.get(`${process.env.BASE_URL}/api/user/messages/latest`,{
+headers: {
+      Authorization: `Bearer ${utoken}`,
+      'Content-Type': 'application/json',
+    },
+ });
+const {data}= messagetemplate;
+let content = data?.data.email_content;
+let editcontent = content.replace("[Director's Name]","sanju baba")
+
   const message = [
     `To: ${toEmail}`,
-    "Subject: Gmail API Test",
+    "Subject: Email From Scaleleads",
     "",
-    "This is a test email ."
+    `${editcontent}`
   ].join("\n");
 
   const encodedMessage = Buffer.from(message)
@@ -434,7 +451,7 @@ export const checkemailreplied = async (token,messageId) => {
       },
       params: {
         
-        maxResults: 2,
+        maxResults: 10,
       },
     });
 
@@ -467,10 +484,11 @@ export const checkemailreplied = async (token,messageId) => {
     }
 
    
-     return false;
+     return {success:false};
 
   } catch (err) {
-    console.error('❌ Error checking Gmail replies:', err.response?.data || err.message);
+    
+    return{success:false,status:err.status};
     
   }
 };
@@ -677,43 +695,54 @@ export const sendemail = async(req,res)=>{
 
 }
 
-// export const refreshGmailToken = async (refreshToken) => {
-//   console.log(process.env.GOOGLE_CLIENT_ID);
-//   try {
-//     const res = await axios.post('https://oauth2.googleapis.com/token', null, {
-//       params: {
-//         client_id: process.env.GOOGLE_CLIENT_ID,
-//         client_secret: process.env.GOOGLE_CLIENT_SECRET,
-//         refresh_token: refreshToken,
-//         grant_type: 'refresh_token'
-//       }
-//     });
-//     console.log(res);
+export const refreshGmailToken = async (refreshToken) => {
+  try {
+    const response = await axios.post(
+      'https://oauth2.googleapis.com/token',
+      qs.stringify({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
 
-//     return res.data.access_token;
-//   } catch (err) {
-//     console.error('❌ Failed to refresh Gmail token:', err.response?.data || err.message);
-//     return null;
-//   }
-// };
-
+    const { access_token, expires_in } = response.data;
+   
+    return access_token;
+  } catch (err) {
+    console.error('❌ Failed to refresh Gmail token:', err.response?.data || err.message);
+    return null;
+  }
+};
 
 
 export const checkAllReplies = async() => {
-
+  
   const currentUser = JSON.parse(fs.readFileSync(currentUserFile, 'utf-8'));
     const userId = currentUser.user_id;
       const tokens = JSON.parse(fs.readFileSync(tokensFile, 'utf-8'));
        const userEntry = tokens.find(t => t.user_id === userId);
        let utoken = userEntry.token;
 
+    let compainid;
+    const currentcop = JSON.parse(fs.readFileSync(currentcompain,'utf-8'));
+    compainid =currentcop.cid;
 
-  const leadsToCheck = await axios.get(`${process.env.BASE_URL}/api/leads/unreplied`,{
+ 
+
+  const leadsToCheck = await axios.get(`${process.env.BASE_URL}/api/email-leads/unreplied/${compainid}`,{
     headers: {
       Authorization: `Bearer ${utoken}`,
       'Content-Type': 'application/json',
     },
   });
+ 
 
 
 
@@ -724,22 +753,23 @@ export const checkAllReplies = async() => {
     try {
       if (lead.source === 'gmail') {
         isReplied = await checkemailreplied(lead.token, lead.msgid);
-     
-    
-        // if(isReplied.success===false && isReplied.status===401){
-        //   console.log("hello");
-        //      let response = await refreshGmailToken(lead.refreshtoken);
-        //      console.log(response);
-           
-        // }
+        if(isReplied.success===false && isReplied.status==401){
+          let response = await refreshGmailToken(lead.refreshtoken);
+          if(response){
+            isReplied = await checkemailreplied(response,lead.msgid);
+            console.log(isReplied);
+             
+            }
+        }
+ 
       } else if (lead.source === 'outlook') {
         isReplied = await checkoutlookreplied(lead.token, lead.msgid);
       } else if (lead.source === 'smtp') {
         isReplied = await checksmtpreplied(lead.email, lead.password, lead.msgid);
       }
 
-      if (isReplied) {
-        console.log('hello')
+      if (isReplied===true) {
+    
      const reply =     await axios.patch(`${process.env.BASE_URL}/api/email-leads/${lead.id}/replied`,{replied:true},
       
 {
@@ -773,22 +803,31 @@ return { success: true };
 cron.schedule("* * * * *", async() => {
  
    const statcron = JSON.parse(fs.readFileSync(start, 'utf-8'));
-   if(statcron.start){
-    await checkAllReplies();
-   }else{
-    console.log('cron job stopped');
-   }
+     const currentUser = JSON.parse(fs.readFileSync(currentUserFile, 'utf-8'));
+     const activeCampaigns = statcron.filter(item => item.start === true && item.uid === currentUser.user_id);
+
+    if (activeCampaigns.length === 0) {
+      console.log('⛔ No active campaigns for the current user.');
+      return;
+    }
+  for (const campaign of activeCampaigns) {
+      console.log(`✅ Running Campaign ID ${campaign.cid} for User ${campaign.uid}`);
+      await checkAllReplies(); // or whatever your function is
+    }
+   
   
 
 });
 
 export const stopcompain = async(req,res)=>{
+  const {id} = req.body;
+
   try{
     const content = JSON.parse(fs.readFileSync(start, 'utf-8'));
+    const stopcron = content.find(item=>item.cid===id);
+   stopcron.start=false;
 
-    // Step 2: Update the 'start' value in the object
-    content.start = false;
-
+   
     // Step 3: Write the updated object back to the file
     fs.writeFileSync(start, JSON.stringify(content, null, 2));
     return res.json({message:"Compain has been stopped",isSuccess:true})
