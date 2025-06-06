@@ -96,7 +96,7 @@ if (existingIndex !== -1) {
       'https://api.apollo.io/api/v1/mixed_people/search',
       {
         page:2,
-        per_page:15,
+        per_page:2,
         person_titles: [sector],
        
         organization_num_employees_ranges:[company_size]
@@ -176,7 +176,7 @@ const existingUids = new Set(data.data.filter(item=>item.user_id===sub)
   }
   try {
     if(gtoken){
-      msgHeaderId = await sendViaGmail(gtoken, "sanjubora84@gmail.com",utoken,lead.name);
+      msgHeaderId = await sendViaGmail(gtoken, lead.email,utoken,lead.name);
 
     }
     if(user && pass){
