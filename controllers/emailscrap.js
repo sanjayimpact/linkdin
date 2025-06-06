@@ -21,19 +21,9 @@ const currentcompain = path.join(__dirname,'currentcompain.json');
  
 export const scrapemail = async (req, res) => {
   const{ body} = req.body;
-  const {  sector, company_size, id } = body;
- const myCookie = req.cookies; // Access cookie here
-let gtoken = myCookie.gmail_access_token;
-console.log(gtoken);
-let mstoken = myCookie.microsoft_access_token;
-let grefreshtoken = myCookie.gmail_refresh_token;
-let mrefreshtoken = myCookie.microsoft_refresh_token;
-let gtokenexpire = myCookie.gexpire;
-let mtokenexpire = myCookie.mexpire;
-let user = myCookie.uemail;
-let uemail = myCookie.gmail_user;
-let memail = myCookie.ms_email;
-let pass = myCookie.uapppas;
+  const {  sector, company_size, id,gtoken,mstoken,grefreshtoken,mrefreshtoken,gtokenexpire,mtokenexpire,user,uemail,memail,pass } = body;
+
+
 let msgHeaderId;
 const token = req.token;
 const utoken = req.token;
@@ -160,7 +150,8 @@ if (existingIndex !== -1) {
         }
       })
     );
-console.log(detailedContacts);
+
+    
     const validResults = detailedContacts.filter(Boolean);
     // let msgHeaderId =await sendViaGmail(gtoken, lead.email);
     
