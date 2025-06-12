@@ -10,12 +10,8 @@ puppeteer.use(StealthPlugin());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const proxyHost = 'brd.superproxy.io';
-const proxyPort = 33335;
-const proxyUsername = 'brd-customer-hl_b0a0de5f-zone-residential_proxy1';
-const proxyPassword = '9dw6ab6ec4x4';
 
-const BROWSER_WS = `wss://brd-customer-hl_b0a0de5f-zone-scraping_browser1:zuh9bm3r1npt@brd.superproxy.io:9222`;
+const BROWSER_WS = `${process.env.SCRAPER_URL}`;
 const linkedintokensFile = path.join(__dirname, "linkedin_tokens.json");
 const linkedincurrentUserFile = path.join(__dirname, "linkedin_current_users.json");
 
