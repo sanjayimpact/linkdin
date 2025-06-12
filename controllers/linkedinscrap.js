@@ -160,12 +160,20 @@ if (!alreadyExists) {
   await page.goto('https://www.linkedin.com', { waitUntil: 'domcontentloaded' });
 
    
-    await page.evaluate((token) => {
-      document.cookie = `li_at=${token}; domain=.linkedin.com; path=/; secure; SameSite=Lax`;
-    }, usertoken);
+    // await page.evaluate((token) => {
+    //   document.cookie = `li_at=${token}; domain=.linkedin.com; path=/; secure; SameSite=Lax`;
+    // }, usertoken);
 
 
-   
+   await page.setCookie({
+  name: 'li_at',
+  value: usertoken,
+  domain: '.linkedin.com',
+  path: '/',
+  httpOnly: true,
+  secure: true,
+  sameSite: 'Lax',
+});
 await page.evaluate(() => location.href = "https://www.linkedin.com/feed");
 await page.waitForNavigation({ waitUntil: "domcontentloaded" });
 
@@ -183,7 +191,7 @@ await new Promise(r => setTimeout(r, 1500));
 
 
     let currentPage = 1;
-    const maxPages = 5;
+    const maxPages = 1;
 
     while (currentPage <= maxPages) {
 
