@@ -8,14 +8,30 @@ import { fileURLToPath } from 'url';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
-import axios from 'axios';
-import qs from 'qs'
+import Bree from 'bree';
+
 dotenv.config();
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const bree = new Bree({
+ root: false,
+  jobs:[
+    {
+      name:'check_replies',
+      interval:'1m',
+      path:path.join(__dirname,'controllers','emailscrap.js'),
+      worker: {
+        workerData: {},
+       
+        concurrent: true              
+      }
+    }
+  ]
+})
+
 app.use(cors({
-    origin: 'https://scale-leads-jet.vercel.app',
+    origin: 'http://localhost:3000',
   credentials: true, // Allow cookies
 }));
 app.use(express.json());
@@ -31,4 +47,5 @@ app.use('/api',apiRouter)
 
 
 const PORT = process.env.PORT || 4000;
+// bree.start();
 app.listen(PORT, () => console.log(`Server started on http://localhost:${PORT}`));

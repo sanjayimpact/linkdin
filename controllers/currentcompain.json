@@ -1,3 +1,22 @@
-{
-  "cid": 46
-}
+[
+  {
+    "cid": 11,
+    "active": true
+  },
+  {
+    "cid": 3,
+    "active": true
+  },
+  {
+    "cid": 46,
+    "active": true
+  },
+  {
+    "cid": 14,
+    "active": true
+  },
+  {
+    "cid": 13,
+    "active": true
+  }
+]

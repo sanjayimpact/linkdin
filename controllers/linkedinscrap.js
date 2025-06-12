@@ -4,48 +4,129 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import 'dotenv/config'
+
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 puppeteer.use(StealthPlugin());
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const BROWSER_WS = 'wss://brd-customer-hl_6ed9d8e4-zone-scraping_browser1:zd2q5gl4gqat@brd.superproxy.io:9222';
+const proxyHost = 'brd.superproxy.io';
+const proxyPort = 33335;
+const proxyUsername = 'brd-customer-hl_b0a0de5f-zone-residential_proxy1';
+const proxyPassword = '9dw6ab6ec4x4';
 
-const simulateMouseMove = async (page) => {
-  const box = await page.viewport();
-  for (let i = 0; i < 10; i++) {
-    const x = Math.floor(Math.random() * box.width);
-    const y = Math.floor(Math.random() * box.height);
+const BROWSER_WS = `wss://brd-customer-hl_b0a0de5f-zone-scraping_browser1:zuh9bm3r1npt@brd.superproxy.io:9222`;
+const linkedintokensFile = path.join(__dirname, "linkedin_tokens.json");
+const linkedincurrentUserFile = path.join(__dirname, "linkedin_current_users.json");
+
+const linkedinstart = path.join(__dirname, "linkedin_start.json");
+const linkedincurrentcompain = path.join(__dirname, "linkedin_campaigns.json");
+const simulateHumanBehavior = async (page) => {
+
+  const viewport = await page.viewport();
+  // Mouse movement simulation
+  for (let i = 0; i < 5; i++) {
+    const x = Math.floor(Math.random() * viewport.width);
+    const y = Math.floor(Math.random() * viewport.height);
     await page.mouse.move(x, y, { steps: 5 });
-    await page.waitForTimeout(Math.random() * 500 + 300); // 300–800ms
+     await new Promise(r => setTimeout(r, 1500));
+  }
+
+  // Scroll slowly
+  for (let i = 0; i < 5; i++) {
+    await page.evaluate(() => window.scrollBy(0, 200));
+    await new Promise(r => setTimeout(r, 1500));
   }
 };
 
 
 
+// random delay
+const randomDelay = (min, max) =>
+  new Promise(res => setTimeout(res, Math.floor(Math.random() * (max - min + 1) + min)));
+
+
+
+const simulateMouseMove = async (page) => {
+  const width = await page.evaluate(() => window.innerWidth);
+  const height = await page.evaluate(() => window.innerHeight);
+  await page.mouse.move(
+    Math.floor(Math.random() * width),
+    Math.floor(Math.random() * height)
+  );
+};
+
+const simulateHumanScroll = async (page) => {
+  for (let i = 0; i < 4; i++) {
+    await page.evaluate(() => window.scrollBy(0, Math.floor(window.innerHeight / 2)));
+    await simulateMouseMove(page);
+    await randomDelay(800, 1800);
+  }
+};
+
+
 export const linkedinscrap = async (req, res) => {
-  const { body } = req.body;
-  const{id,company_size,sector} = body;
+  const {body} = req.body;
+  const{id,company_size,sector,usertoken} = body;
   const myCookies = req.cookies;
-  let ldtoken = myCookies?.user_token;
 
   const{sub} = req.user;
   const token = req.token;
 
 
-  // 1. 🔐 Fetch li_at token from your backend API
-  let li_at_token = "";
-  try {
-    const tokenRes = await axios.get(`${process.env.BASE_URL}/api/linkedin-token/${sub}`,{
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-    const {data} = tokenRes;
-    
-  
-    li_at_token = ldtoken;
-    // li_at_token = data?.data?.linkedin_token;
 
+  // 1. 🔐 Fetch li_at token from your backend API
+  let li_at_token = usertoken;
+// add some data before scrapping 
+//add linkedin current user 
+
+let currentUsers = [];
+if (fs.existsSync(linkedincurrentUserFile)) {
+  currentUsers = JSON.parse(fs.readFileSync(linkedincurrentUserFile, "utf-8"));
+}
+if (!currentUsers.find(u => u.user_id == sub)) {
+  currentUsers.push({ user_id: sub, active: true });
+  fs.writeFileSync(linkedincurrentUserFile, JSON.stringify(currentUsers, null, 2));
+}
+
+
+//add linkedincompain
+let campaigns = [];
+if (fs.existsSync(linkedincurrentcompain)) {
+  campaigns = JSON.parse(fs.readFileSync(linkedincurrentcompain, "utf-8"));
+}
+if (!campaigns.find(c => c.cid == id)) {
+  campaigns.push({ cid: id, uid: sub, active: true });
+  fs.writeFileSync(linkedincurrentcompain, JSON.stringify(campaigns, null, 2));
+}
+
+// add token 
+
+
+let tokens = [];
+if (fs.existsSync(linkedintokensFile)) {
+  tokens = JSON.parse(fs.readFileSync(linkedintokensFile, "utf-8"));
+}
+if (!tokens.find(t => t.user_id == sub)) {
+  tokens.push({ user_id: sub, token: usertoken });
+  fs.writeFileSync(linkedintokensFile, JSON.stringify(tokens, null, 2));
+}
+
+
+//start flag
+let startEntries = [];
+if (fs.existsSync(linkedinstart)) {
+  startEntries = JSON.parse(fs.readFileSync(linkedinstart, "utf-8"));
+}
+const alreadyExists = startEntries.find(e => e.uid == sub && e.cid == id);
+if (!alreadyExists) {
+  startEntries.push({ uid: sub, cid: id, start: true });
+  fs.writeFileSync(linkedinstart, JSON.stringify(startEntries, null, 2));
+}
+
+
+  try {
+    
     if (!li_at_token) throw new Error("Missing li_at token");
   } catch (err) {
     console.error("❌ Failed to fetch li_at token:", err.message);
@@ -61,61 +142,55 @@ export const linkedinscrap = async (req, res) => {
   let browser;
   try {
 
-    const sessionId = `linkedin-${Math.floor(Math.random() * 100000)}`;
-const country = 'us';
-const rotatedWs = BROWSER_WS.replace(':', `-session-${sessionId}-country-${country}:`);
+
+
     browser = await puppeteer.connect({
-      browserWSEndpoint: rotatedWs
+      browserWSEndpoint: BROWSER_WS
     
     });
-    // browser = await puppeteer.launch({
-    //   headless:false
-    
-    // });
 
+  //  
 
     const page = await browser.newPage();
-await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0 Safari/537.36');
-
-// await page.evaluate((liAt) => {
-//   document.cookie = `li_at=${liAt}; domain=.linkedin.com; path=/; secure; SameSite=None`;
-// }, li_at_token);
-await page.setCookie({
-  name: 'li_at',
-  value: li_at_token,
-  domain: '.linkedin.com',
-  httpOnly: true,
-  secure: true,
-  sameSite: 'Lax',
-});
 
 
+
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36'
+    );
+
+      await page.setViewport({ width: 1280, height: 1020 });
+    // Set li_at cookie before loading any LinkedIn page
+  await page.goto('https://www.linkedin.com', { waitUntil: 'domcontentloaded' });
+
+   
+    await page.evaluate((token) => {
+      document.cookie = `li_at=${token}; domain=.linkedin.com; path=/; secure; SameSite=Lax`;
+    }, usertoken);
+
+
+   
 await page.evaluate(() => location.href = "https://www.linkedin.com/feed");
 await page.waitForNavigation({ waitUntil: "domcontentloaded" });
 
     // 4. 🔗 Open LinkedIn and validate login
 
-    if (await page.$("input[name=session_key]")) {
-      throw new Error("Invalid li_at token. Login page loaded.");
-    }
+
     console.log("✅ Logged in successfully using li_at cookie");
 
-await new Promise(r => setTimeout(r, 500));
+
+await new Promise(r => setTimeout(r, 1500));
     // 5. 🔎 Go to search results
     const searchUrl = `https://www.linkedin.com/search/results/people/?companySize=${company_sizes}&keywords=${encodeURIComponent(company)}`;
-   await page.evaluate(url => window.location.href = url, searchUrl);
-await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(url => window.location.href = url, searchUrl);
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+
 
     let currentPage = 1;
-    const maxPages = 2;
+    const maxPages = 5;
 
     while (currentPage <= maxPages) {
 
-      for (let i = 0; i <=2; i++) {
-         await simulateMouseMove(page);
-        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-        await new Promise((r) => setTimeout(r, 1500));
-      }
 
       await page.waitForSelector('ul[role="list"] > li', { timeout: 8000 });
 
@@ -123,7 +198,7 @@ await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
         const results = [];
         const cards = document.querySelectorAll('ul[role="list"] > li');
         cards.forEach((card) => {
-  card.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+         card.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
 });
 
         cards.forEach((card) => {
@@ -154,28 +229,29 @@ await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
             connectionRequest: false,
             firstMessageSent: false,
             replied: false,
+            token:usertoken
           });
         }
       });
 
       // 🚀 Try to connect with people
-      await page.evaluate(async () => {
-        const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-        const buttons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
-        for (let i = 0; i < buttons.length; i++) {
-          try {
-            buttons[i].click();
-            await delay(1000);
-            const sendBtn = document.querySelector('button[aria-label="Send without a note"]');
-            if (sendBtn) {
-              sendBtn.click();
-              await delay(1000);
-            }
-          } catch (e) {
-            console.warn(`❌ Connection failed at ${i}`, e);
-          }
-        }
-      });
+      // await page.evaluate(async () => {
+      //   const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+      //   const buttons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
+      //   for (let i = 0; i < buttons.length; i++) {
+      //     try {
+      //       buttons[i].click();
+      //       await delay(1000);
+      //       const sendBtn = document.querySelector('button[aria-label="Send without a note"]');
+      //       if (sendBtn) {
+      //         sendBtn.click();
+      //         await delay(1000);
+      //       }
+      //     } catch (e) {
+      //       console.warn(`❌ Connection failed at ${i}`, e);
+      //     }
+      //   }
+      // });
 
       const nextBtn = await page.$('button[aria-label="Next"]');
       if (!nextBtn) break;
@@ -213,27 +289,33 @@ await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
 
 
 export const linkedinid = async (req, res) => {
-  const { token } = req.body; // li_at
- 
+  const { user_token } = req.body; // li_at
+
   let browser;
   try {
-    // browser = await puppeteer.connect({
-    //   browserWSEndpoint: BROWSER_WS,
-    // });
-   browser  = await puppeteer.launch({
-    headless: false,
-   })
+    browser = await puppeteer.connect({
+      browserWSEndpoint: BROWSER_WS,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
     const page = await browser.newPage();
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36'
+    );
 
+      await page.setViewport({ width: 1280, height: 1020 });
     // Set li_at cookie before loading any LinkedIn page
-   await page.evaluate((liAt) => {
-  document.cookie = `li_at=${liAt}; domain=.linkedin.com; path=/; secure; SameSite=None`;
-}, token);
+  await page.goto('https://www.linkedin.com', { waitUntil: 'domcontentloaded' });
 
+    // Inject li_at via JS (not setCookie)
+    await page.evaluate((token) => {
+      document.cookie = `li_at=${token}; domain=.linkedin.com; path=/; secure; SameSite=Lax`;
+    }, user_token);
 
     await page.goto('https://www.linkedin.com/feed', {
       waitUntil: 'domcontentloaded',
     });
+      await simulateHumanBehavior(page);
 
     // Verify login
     if (await page.$('input[name="session_key"]')) {
@@ -247,48 +329,19 @@ export const linkedinid = async (req, res) => {
 
 if (!profileName) throw new Error("Couldn't extract profile name");
 
-console.log('👤 Profile Name:', profileName);
+
     console.log('✅ Logged into LinkedIn successfully');
 
     // Fetch profile + email from internal API using browser context
-await page.waitForSelector('a[href^="/in/"]', { timeout: 10000 });
 
-    // Extract profile URL
-    const profilePath = await page.evaluate(() => {
-      const anchor = document.querySelector('a[href^="/in/"]');
-      return anchor ? anchor.getAttribute('href') : null;
-    });
-
-   if (!profilePath) throw new Error("Couldn't find any profile URL on feed");
-
-    const fullProfileURL = `https://www.linkedin.com${profilePath}`;
-    console.log('➡️ Navigating to profile:', fullProfileURL);
-
-    // Go to the profile page
-    await page.goto(fullProfileURL, { waitUntil: 'domcontentloaded' });
-
-// Click Contact Info link
-await page.waitForSelector('a[href*="/overlay/contact-info/"]', { timeout: 10000 });
-await page.click('a[href*="/overlay/contact-info/"]');
-
-// Wait for modal content
-await page.waitForSelector('.pv-contact-info__contact-type.ci-email a', { timeout: 10000 });
-
-// Extract email
-const email = await page.evaluate(() => {
-  const el = document.querySelector('.pv-contact-info__contact-type.ci-email a');
-  return el ? el.innerText.trim() : null;
-});
-
-    
 
     await browser.close();
 
     return res.status(200).json({
       status: true,
-        profile: fullProfileURL,
+   
          name: profileName,
-         email:email
+   
     });
   } catch (err) {
     if (browser) await browser.close();
@@ -306,89 +359,5 @@ const email = await page.evaluate(() => {
 
 
 
-export const scrapfromcsv = async(req,res)=>{
-  //   app.post('/scrape-from-csv', upload.single('csvFile'), async (req, res) => {
-//     const { email, password } = req.body;
-//     const filePath = req.file.path;
-  
-//     const profileUrls = [];
-  
-//     // Parse CSV to extract URLs
-//     fs.createReadStream(filePath)
-//       .pipe(csv())
-//       .on('data', (row) => {
-//         const url = Object.values(row)[0]; // assuming first column
-//         if (url.includes('linkedin.com/in')) {
-//           profileUrls.push(url.trim());
-//         }
-//       })
-//       .on('end', async () => {
-//         const scrapedResults = [];
-  
-//         const browser = await puppeteer.launch({
-//           headless: true,
-//           slowMo: 50,
-//           defaultViewport: null
-//         });
-//         const page = await browser.newPage();
-  
-//         try {
-//           console.log("Logging in to LinkedIn...");
-//           await page.goto('https://www.linkedin.com/login');
-//           await page.type('#username', email);
-//           await page.type('#password', password);
-//           await page.click('button[type="submit"]');
-//           await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
-  
-//           for (const profileUrl of profileUrls) {
-//             console.log(`Scraping: ${profileUrl}`);
-//             try {
-//               await page.goto(profileUrl, { waitUntil: 'domcontentloaded' });
-  
-//               const profileData = await page.evaluate(() => {
-//                 const getText = (selector) => document.querySelector(selector)?.innerText.trim() || '';
-//                 return {
-//                   name: getText('.v-align-middle.break-words'),
-//                   headline: getText('.text-body-medium.break-words'),
-//                   location: getText('.text-body-small.inline.t-black--light.break-words'),
-//                   jobTitle: getText('.text-body-medium.break-words')
-//                 };
-//               });
-  
-//               // Recent activity
-//               const activityUrl = profileUrl.endsWith('/')
-//                 ? profileUrl + 'recent-activity/'
-//                 : profileUrl + '/recent-activity/';
-//               await page.goto(activityUrl, { waitUntil: 'domcontentloaded' });
-  
-//               const recentPosts = await page.evaluate(() => {
-//                 const posts = [];
-//                 const elements = document.querySelectorAll('.update-components-text');
-//                 elements.forEach((el, i) => {
-//                   if (i < 2) posts.push(el.innerText.trim());
-//                 });
-//                 return posts;
-//               });
-  
-//               profileData.recentPosts = recentPosts;
-//               profileData.generatedMessage = `Hi ${profileData.name}, I saw your profile as a ${profileData.jobTitle}. Your recent post "${recentPosts[0] || '...'}" really stood out. I’d love to connect!`;
-  
-//               scrapedResults.push({ url: profileUrl, ...profileData });
-//             } catch (innerErr) {
-//               console.error(`Failed to scrape ${profileUrl}:`, innerErr.message);
-//               scrapedResults.push({ url: profileUrl, error: innerErr.message });
-//             }
-//           }
-  
-//           await browser.close();
-//           fs.unlinkSync(filePath); // Clean up uploaded CSV
-//           res.render('batch-result', { results: scrapedResults });
-//         } catch (loginError) {
-//           await browser.close();
-//           res.status(500).send('Login or scraping failed: ' + loginError.message);
-//         }
-//       });
-//   });
-  
-  
-}
+
+
