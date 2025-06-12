@@ -937,7 +937,7 @@ export const checkAllReplies = async (cid, uid) => {
             const now = new Date();
             const hoursSinceSent = (now - sentAt) / (1000 * 60 * 60);
 
-            if (hoursSinceSent >= 0) {
+            if (hoursSinceSent >= 24) {
               if (lead.source == "gmail") {
                 const tokens = JSON.parse(fs.readFileSync(tokensFile, "utf-8"));
 

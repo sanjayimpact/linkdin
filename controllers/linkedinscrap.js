@@ -137,7 +137,7 @@ if (!alreadyExists) {
 
   let browser;
   try {
-
+console.log("entry")
 
 
     browser = await puppeteer.connect({
@@ -149,6 +149,7 @@ if (!alreadyExists) {
 
     const page = await browser.newPage();
 
+console.log("browser set")
 
 
     await page.setUserAgent(
@@ -159,7 +160,8 @@ if (!alreadyExists) {
     // Set li_at cookie before loading any LinkedIn page
   await page.goto('https://www.linkedin.com', { waitUntil: 'domcontentloaded' });
 
-   
+   console.log("linkedin page")
+
     // await page.evaluate((token) => {
     //   document.cookie = `li_at=${token}; domain=.linkedin.com; path=/; secure; SameSite=Lax`;
     // }, usertoken);
@@ -174,6 +176,7 @@ if (!alreadyExists) {
   secure: true,
   sameSite: 'Lax',
 });
+   console.log("setCookies")
 await page.evaluate(() => location.href = "https://www.linkedin.com/feed");
 await page.waitForNavigation({ waitUntil: "domcontentloaded" });
 
