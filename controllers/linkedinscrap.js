@@ -196,14 +196,16 @@ await new Promise(r => setTimeout(r, 1500));
     await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
 
 
+
     let currentPage = 1;
     const maxPages = 1;
 
     while (currentPage <= maxPages) {
 
 
-      await page.waitForSelector('ul[role="list"] > li', { timeout: 8000 });
 
+      await page.waitForSelector('ul[role="list"] > li', { timeout: 25000 });
+     
       const scrapedProfiles = await page.evaluate(() => {
         const results = [];
         const cards = document.querySelectorAll('ul[role="list"] > li');
@@ -267,7 +269,7 @@ await new Promise(r => setTimeout(r, 1500));
       if (!nextBtn) break;
 
       await Promise.all([nextBtn.click(), page.waitForNavigation({ waitUntil: "domcontentloaded" })]);
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 2000));
       currentPage++;
     }
     try {
