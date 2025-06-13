@@ -167,15 +167,18 @@ if (!alreadyExists) {
     // }, usertoken);
 
 
-   await page.setCookie({
-  name: 'li_at',
-  value: usertoken,
-  domain: '.linkedin.com',
-  path: '/',
-  httpOnly: true,
-  secure: true,
-  sameSite: 'Lax',
-});
+//    await page.setCookie({
+//   name: 'li_at',
+//   value: usertoken,
+//   domain: '.linkedin.com',
+//   path: '/',
+//   httpOnly: true,
+//   secure: true,
+//   sameSite: 'Lax',
+// });
+await page.evaluate((liAtToken) => {
+  document.cookie = `li_at=${liAtToken}; domain=.linkedin.com; path=/; secure; SameSite=None`;
+}, usertoken);
    console.log("setCookies")
 await page.evaluate(() => location.href = "https://www.linkedin.com/feed");
 await page.waitForNavigation({ waitUntil: "domcontentloaded" });
