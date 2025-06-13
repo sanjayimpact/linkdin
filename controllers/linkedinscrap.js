@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
-const BROWSER_WS = `${process.env.SCRAPER_URL}` || `wss://brd-customer-hl_b0a0de5f-zone-scraping_browser1:zuh9bm3r1npt@brd.superproxy.io:9222`;
+const BROWSER_WS = `wss://brd-customer-hl_b0a0de5f-zone-scraping_browser1:zuh9bm3r1npt@brd.superproxy.io:9222`;
 const linkedintokensFile = path.join(__dirname, "linkedin_tokens.json");
 const linkedincurrentUserFile = path.join(__dirname, "linkedin_current_users.json");
 
