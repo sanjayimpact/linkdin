@@ -138,15 +138,12 @@ if (!alreadyExists) {
   try {
 
 
- try{
+
      browser = await puppeteer.connect({
       browserWSEndpoint: BROWSER_WS
     
     });
-     console.log("connected")
- }catch(err){
-  console.log(err)
- }
+
   //  
 
     const page = await browser.newPage();
