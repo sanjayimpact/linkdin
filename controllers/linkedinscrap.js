@@ -4,19 +4,21 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import 'dotenv/config'
-
+import cron from "node-cron";
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 puppeteer.use(StealthPlugin());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-
-const BROWSER_WS = `wss://brd-customer-hl_b0a0de5f-zone-scraping_browser1:zuh9bm3r1npt@brd.superproxy.io:9222`;
+ const screenshotPath = `error_screenshot_${Date.now()}.png`;
+let FOLLOWUP_MESSAGE = "hey";
+const sessionId = `linkedin_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+const BROWSER_WS = `wss://brd-customer-hl_b0a0de5f-zone-scraping_browser1:zuh9bm3r1npt@brd.superproxy.io:9222?session=${sessionId}`;
 const linkedintokensFile = path.join(__dirname, "linkedin_tokens.json");
 const linkedincurrentUserFile = path.join(__dirname, "linkedin_current_users.json");
 
 const linkedinstart = path.join(__dirname, "linkedin_start.json");
 const linkedincurrentcompain = path.join(__dirname, "linkedin_campaigns.json");
+
 const simulateHumanBehavior = async (page) => {
 
   const viewport = await page.viewport();
@@ -38,7 +40,7 @@ const simulateHumanBehavior = async (page) => {
 
 
 // random delay
-const randomDelay = (min, max) =>
+const randomDelay = (min=4000, max=15000) =>
   new Promise(res => setTimeout(res, Math.floor(Math.random() * (max - min + 1) + min)));
 
 
@@ -52,13 +54,7 @@ const simulateMouseMove = async (page) => {
   );
 };
 
-const simulateHumanScroll = async (page) => {
-  for (let i = 0; i < 4; i++) {
-    await page.evaluate(() => window.scrollBy(0, Math.floor(window.innerHeight / 2)));
-    await simulateMouseMove(page);
-    await randomDelay(800, 1800);
-  }
-};
+
 
 
 export const linkedinscrap = async (req, res) => {
@@ -103,10 +99,25 @@ let tokens = [];
 if (fs.existsSync(linkedintokensFile)) {
   tokens = JSON.parse(fs.readFileSync(linkedintokensFile, "utf-8"));
 }
-if (!tokens.find(t => t.user_id == sub)) {
-  tokens.push({ user_id: sub, token: usertoken });
-  fs.writeFileSync(linkedintokensFile, JSON.stringify(tokens, null, 2));
+
+// Check if user already exists
+const existingIndex = tokens.findIndex(t => t.user_id == sub);
+
+if (existingIndex !== -1) {
+  // ✅ Update existing token entry
+  tokens[existingIndex].token = token;
+  tokens[existingIndex].linkedintoken = usertoken;
+} else {
+  // ✅ Add new token entry
+  tokens.push({
+    user_id: sub,
+    token: token,
+    linkedintoken: usertoken
+  });
 }
+
+// ✅ Write updated array back to file
+fs.writeFileSync(linkedintokensFile, JSON.stringify(tokens, null, 2));
 
 
 //start flag
@@ -162,20 +173,9 @@ if (!alreadyExists) {
 
    console.log("linkedin page")
 
-    // await page.evaluate((token) => {
-    //   document.cookie = `li_at=${token}; domain=.linkedin.com; path=/; secure; SameSite=Lax`;
-    // }, usertoken);
+   
+//set cookies
 
-
-//    await page.setCookie({
-//   name: 'li_at',
-//   value: usertoken,
-//   domain: '.linkedin.com',
-//   path: '/',
-//   httpOnly: true,
-//   secure: true,
-//   sameSite: 'Lax',
-// });
 await page.evaluate((liAtToken) => {
   document.cookie = `li_at=${liAtToken}; domain=.linkedin.com; path=/; secure; SameSite=None`;
 }, usertoken);
@@ -238,7 +238,7 @@ await new Promise(r => setTimeout(r, 1500));
             headline: profile.headline,
             location: profile.location,
             connectedAt: new Date().toISOString(),
-            connectionRequest: false,
+            connectionRequest: true,
             firstMessageSent: false,
             replied: false,
             token:usertoken
@@ -368,8 +368,194 @@ if (!profileName) throw new Error("Couldn't extract profile name");
 
 
 
+export const linkedinFollowupJob = async (cid, uid) => {
+  try {
+    const currentUsers = JSON.parse(fs.readFileSync(linkedincurrentUserFile, 'utf-8'));
+    const currentCampaigns = JSON.parse(fs.readFileSync(linkedincurrentcompain, 'utf-8'));
+    const tokens = JSON.parse(fs.readFileSync(linkedintokensFile, 'utf-8'));
+
+    const user = currentUsers.find(u => u.user_id === uid && u.active);
+    const campaign = currentCampaigns.find(c => c.cid === cid && c.active);
+
+    if (!user || !campaign) return console.log(`⛔ No active user/campaign for uid: ${uid} cid: ${cid}`);
+  
+
+    const tokenEntry = tokens.find(t => t.user_id === uid);
+    const linkedintoken = tokenEntry?.linkedintoken;
+    const usertoken = tokenEntry?.token;
+     console.log("linkedintoken get")
+     console.log("user token done")
+
+  const browser = await puppeteer.connect({ browserWSEndpoint: BROWSER_WS });
+  //  const browser = await puppeteer.launch({ headless:false});
+    const page = await browser.newPage();
+   await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36'
+    );
+
+      await page.setViewport({ width: 1280, height: 1020 });
+
+    await page.goto('https://www.linkedin.com', { waitUntil: 'domcontentloaded' });
 
 
+    await page.evaluate((liAt) => {
+      document.cookie = `li_at=${liAt}; domain=.linkedin.com; path=/; secure; SameSite=None`;
+    }, linkedintoken);
+
+    await page.goto('https://www.linkedin.com/feed', { waitUntil: 'domcontentloaded' });
+   console.log("login successfull")
+ /// check the connect who have accpted or not
+
+//  await page.goto("https://www.linkedin.com/mynetwork/invite-connect/connections/", {
+//   waitUntil: "domcontentloaded"
+// });
+await page.evaluate(() => location.href = "https://www.linkedin.com/mynetwork/invite-connect/connections/");
+await page.waitForNavigation({ waitUntil: "domcontentloaded" });
+console.log("connection page loaded");
+await page.screenshot({ path: screenshotPath });
+
+await page.waitForSelector(".mn-connection-card__details", { timeout: 45000 });
+const connected = await page.evaluate(() => {
+    const data = [];
+    const cards = document.querySelectorAll(".mn-connection-card");
+
+    cards.forEach((card) => {
+      const nameEl = card.querySelector(".mn-connection-card__name");
+      const timeEl = card.querySelector(".time-badge");
+      const anchor = card.querySelector("a.mn-connection-card__link");
+
+      const name = nameEl?.innerText?.trim();
+      const profileUrl = anchor?.href?.split("?")[0] || "";
+      const time = timeEl?.innerText?.trim();
+
+      if (name && profileUrl && time) {
+        data.push({ name, profileUrl, time });
+      }
+    });
+console.log(data);
+    return data;
+  });
+
+ //get all the lead that are unreplied or connected
+
+    const leadsRes = await axios.get(`${process.env.BASE_URL}/api/linkedin/leads/unreplied?campaign_id=${cid}`, {
+      headers: {
+        Authorization: `Bearer ${usertoken}`
+      }
+    });
+ 
+    const {data} = leadsRes;
+
+   const leads = data?.leads;
+for (const lead of leads) {
+  const match = connected.find(c => c.profileUrl === lead.url || c.name === lead.name);
+
+  if (match) {
+    const connectedAt = new Date(lead.created_at);
+    const now = new Date();
+    const hoursSinceConnection = (now - connectedAt) / (1000 * 60 * 60);
+    console.log(`⏱ Hours since connected with ${lead.name}: ${hoursSinceConnection}`);
+
+    if (hoursSinceConnection >= 1) {
+      try {
+        // ✅ NEW: Open a new tab for every lead follow-up
+       console.log("hello");
+      
+        // await followPage.evaluate (lead.url, { waitUntil: 'domcontentloaded' });
+        await Promise.all([
+  page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
+  page.evaluate(url => location.href = url, lead.url)
+]);
+
+        const firstName = lead.name.trim().split(" ")[0];
+        console.log(firstName);
+        const selector = `button[aria-label="Message ${firstName}"]`;
+        
+        await new Promise(r => setTimeout(r, 1500));
+
+      await page.waitForSelector(selector, { timeout: 25000 });
+      await page.screenshot({
+  path: `before_click_message_${firstName}.png`});
+
+await page.evaluate((sel) => {
+  const btn = document.querySelector(sel);
+  if (btn) {
+    btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    btn.click();
+  }
+}, selector);
 
 
+console.log(`✅ Clicked 'Message ${firstName}' button`);
+         await page.screenshot({
+  path: `after_click_message_${firstName}.png`}); 
+        await page.waitForSelector('div.msg-form__contenteditable', { timeout: 35000 });
+        await page.type('div.msg-form__contenteditable', FOLLOWUP_MESSAGE, { delay: 20 });
 
+          await new Promise(r => setTimeout(r, 1500));
+          await page.screenshot({
+  path: `after_send_message_${firstName}.png`}); 
+        await page.click('button.msg-form__send-button');
+        console.log(`✅ Sent follow-up to ${lead.name}`);
+await page.screenshot({
+  path: `after_send_message_${firstName}.png`}); 
+        // await axios.patch(`${process.env.BASE_URL}/api/linkedin/leads/update-replied`, {
+        //   replied: true,
+        //   id: lead.id
+        // }, {
+        //   headers: { Authorization: `Bearer ${usertoken}` }
+        // });
+
+  await new Promise(r => setTimeout(r, 1500));
+
+        
+      } catch (err) {
+        console.error(`❌ Failed to message ${lead.name}:`, err.message);
+      }
+    } else {
+      console.log(`⏳ Skipped: ${lead.name} (Connected less than 1hr)`);
+    }
+  } else {
+    console.log(`⛔ Not yet connected: ${lead.name}`);
+  }
+}
+
+
+   
+
+  } catch (err) {
+    console.error(`❌ LinkedIn follow-up job failed for uid: ${uid} cid: ${cid}`, err.message);
+  }
+};
+
+
+cron.schedule('*/2 * * * *', async () => {
+  const activeUsers = JSON.parse(fs.readFileSync(linkedincurrentUserFile, 'utf-8'));
+  const activeStarts = JSON.parse(fs.readFileSync(linkedinstart, 'utf-8'));
+
+  for (const user of activeUsers) {
+    const userCampaigns = activeStarts.filter(item => item.start && item.uid === user.user_id);
+
+    for (const campaign of userCampaigns) {
+      console.log(`🚀 Running follow-up for UID ${user.user_id}, CID ${campaign.cid}`);
+      await linkedinFollowupJob(campaign.cid, user.user_id);
+    }
+  }
+});
+
+export const linkedinstopcompain = async (req, res) => {
+  const { id } = req.body;
+
+  try {
+    const content = JSON.parse(fs.readFileSync(linkedinstart, "utf-8"));
+    const stopcron = content.find((item) => item.cid == id);
+
+    stopcron.start = false;
+
+    // Step 3: Write the updated object back to the file
+    fs.writeFileSync(linkedinstart, JSON.stringify(content, null, 2));
+    return res.json({ message: "Compain has been stopped", isSuccess: true });
+  } catch (err) {
+    console.log(err);
+  }
+};

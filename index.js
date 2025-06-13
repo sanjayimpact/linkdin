@@ -31,7 +31,7 @@ const bree = new Bree({
 })
 
 app.use(cors({
-    origin: 'https://scale-leads-jet.vercel.app',
+    origin: 'http://localhost:3000',
   credentials: true, // Allow cookies
 }));
 app.use(express.json());

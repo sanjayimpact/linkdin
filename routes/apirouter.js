@@ -1,5 +1,5 @@
 import express from 'express';
-import { linkedinid, linkedinscrap } from '../controllers/linkedinscrap.js';
+import { linkedinid, linkedinscrap, linkedinstopcompain } from '../controllers/linkedinscrap.js';
 
 import { authmiddleware } from '../middlewares/jwtauth.js';
 import { runjob } from '../controllers/automation.js';
@@ -20,5 +20,6 @@ apiRouter.post("/scrap",authmiddleware,linkedinscrap)
 .post('/checksmtp',authmiddleware,checkSMTPCredentials)
 .post('/checkreply',checksmtpreplied)
 .get('/cronjob',checkAllReplies)
-.post('/stopcompain',authmiddleware,stopcompain);
+.post('/stopcompain',authmiddleware,stopcompain)
+.post('/pausescrap',authmiddleware,linkedinstopcompain)
 

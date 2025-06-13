@@ -138,8 +138,7 @@ export const runjob = async (req,res) => {
     }
   }
 
-  // 2. Send first message only if 40 minutes have passed
-  console.log("✉️ Sending scheduled messages");
+
   for (const lead of leads) {
     const match = connected.find(
       (conn) => conn.name === lead.name || conn.profileUrl === lead.url
