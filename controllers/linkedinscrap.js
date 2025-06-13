@@ -1,11 +1,12 @@
 import fs from "fs";
-import puppeteer from "puppeteer-core";
+import puppeteer from "puppeteer-extra";
 import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import 'dotenv/config'
 
-
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+puppeteer.use(StealthPlugin());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
