@@ -137,19 +137,22 @@ if (!alreadyExists) {
 
   let browser;
   try {
-console.log("entry")
 
 
-    browser = await puppeteer.connect({
+ try{
+     browser = await puppeteer.connect({
       browserWSEndpoint: BROWSER_WS
     
     });
-
+     console.log("connected")
+ }catch(err){
+  console.log(err)
+ }
   //  
 
     const page = await browser.newPage();
 
-console.log("browser set")
+
 
 
     await page.setUserAgent(
