@@ -70,7 +70,7 @@ export const linkedinscrap = async (req, res) => {
   // 1. 🔐 Fetch li_at token from your backend API
   let li_at_token = usertoken;
 // add some data before scrapping 
-//add linkedin current user 
+
 
 let currentUsers = [];
 if (fs.existsSync(linkedincurrentUserFile)) {
@@ -159,20 +159,20 @@ fs.writeFileSync(linkedinstart, JSON.stringify(startEntries, null, 2));
 
 
 
-    //  browser = await puppeteer.connect({
-    //   browserWSEndpoint: BROWSER_WS,
-    //  args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    // });
+     browser = await puppeteer.connect({
+      browserWSEndpoint: BROWSER_WS,
+     args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
 
 
   
-    browser = await puppeteer.launch({
-      headless:false,
-      slowMo:50,
-      defaultViewport: null,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    // browser = await puppeteer.launch({
+    //   headless:false,
+    //   slowMo:50,
+    //   defaultViewport: null,
+    //   args: ['--no-sandbox', '--disable-setuid-sandbox'],
       
-    });
+    // });
 
     const page = await browser.newPage();
 
@@ -335,17 +335,17 @@ export const linkedinid = async (req, res) => {
 
   let browser;
   try {
-    // browser = await puppeteer.connect({
-    //   browserWSEndpoint: BROWSER_WS,
-    // args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    // });
-     browser = await puppeteer.launch({
-      headless:false,
-      slowMo:50,
-      defaultViewport: null,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      
+    browser = await puppeteer.connect({
+      browserWSEndpoint: BROWSER_WS,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
+    //  browser = await puppeteer.launch({
+    //   headless:false,
+    //   slowMo:50,
+    //   defaultViewport: null,
+    //   args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      
+    // });
 
     const page = await browser.newPage();
     // await page.setUserAgent(
@@ -421,14 +421,14 @@ export const linkedinFollowupJob = async (cid, uid) => {
     const linkedintoken = tokenEntry?.linkedintoken;
     const usertoken = tokenEntry?.token;
  
-  // const browser = await puppeteer.connect({ browserWSEndpoint: BROWSER_WS });
-  let  browser = await puppeteer.launch({
-      headless:false,
-      slowMo:50,
-      defaultViewport: null,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+   const browser = await puppeteer.connect({ browserWSEndpoint: BROWSER_WS , args: ['--no-sandbox', '--disable-setuid-sandbox']});
+  // let  browser = await puppeteer.launch({
+  //     headless:false,
+  //     slowMo:50,
+  //     defaultViewport: null,
+  //     args: ['--no-sandbox', '--disable-setuid-sandbox'],
       
-    });
+  //   });
     const page = await browser.newPage();
 
 
@@ -563,19 +563,19 @@ await browser.close();
 };
 
 
-// cron.schedule('*/2 * * * *', async () => {
-//   const activeUsers = JSON.parse(fs.readFileSync(linkedincurrentUserFile, 'utf-8'));
-//   const activeStarts = JSON.parse(fs.readFileSync(linkedinstart, 'utf-8'));
+cron.schedule('*/2 * * * *', async () => {
+  const activeUsers = JSON.parse(fs.readFileSync(linkedincurrentUserFile, 'utf-8'));
+  const activeStarts = JSON.parse(fs.readFileSync(linkedinstart, 'utf-8'));
 
-//   for (const user of activeUsers) {
-//     const userCampaigns = activeStarts.filter(item => item.start && item.uid === user.user_id);
+  for (const user of activeUsers) {
+    const userCampaigns = activeStarts.filter(item => item.start && item.uid === user.user_id);
 
-//     for (const campaign of userCampaigns) {
-//       console.log(`🚀 Running follow-up for UID ${user.user_id}, CID ${campaign.cid}`);
-//       await linkedinFollowupJob(campaign.cid, user.user_id);
-//     }
-//   }
-// });
+    for (const campaign of userCampaigns) {
+      console.log(`🚀 Running follow-up for UID ${user.user_id}, CID ${campaign.cid}`);
+      await linkedinFollowupJob(campaign.cid, user.user_id);
+    }
+  }
+});
 
 export const linkedinstopcompain = async (req, res) => {
   const { id } = req.body;
