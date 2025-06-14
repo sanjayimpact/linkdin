@@ -9,8 +9,8 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 puppeteer.use(StealthPlugin());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
- const screenshotPath = `error_screenshot_${Date.now()}.png`;
-let FOLLOWUP_MESSAGE = "hey";
+
+
 const sessionId = `linkedin_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 const BROWSER_WS = `wss://brd-customer-hl_b0a0de5f-zone-scraping_browser1:zuh9bm3r1npt@brd.superproxy.io:9222?session=${sessionId}`;
 const linkedintokensFile = path.join(__dirname, "linkedin_tokens.json");
@@ -125,11 +125,18 @@ let startEntries = [];
 if (fs.existsSync(linkedinstart)) {
   startEntries = JSON.parse(fs.readFileSync(linkedinstart, "utf-8"));
 }
-const alreadyExists = startEntries.find(e => e.uid == sub && e.cid == id);
-if (!alreadyExists) {
+
+const existingEntryIndex = startEntries.findIndex(e => e.uid == sub && e.cid == id);
+
+if (existingEntryIndex === -1) {
+  // If entry does not exist, add a new one
   startEntries.push({ uid: sub, cid: id, start: true });
-  fs.writeFileSync(linkedinstart, JSON.stringify(startEntries, null, 2));
+} else {
+  // If entry exists, update start to true
+  startEntries[existingEntryIndex].start = true;
 }
+
+fs.writeFileSync(linkedinstart, JSON.stringify(startEntries, null, 2));
 
 
   try {
@@ -151,27 +158,33 @@ if (!alreadyExists) {
 
 
 
-     browser = await puppeteer.connect({
-      browserWSEndpoint: BROWSER_WS
-    
-    });
 
-  //  
+    //  browser = await puppeteer.connect({
+    //   browserWSEndpoint: BROWSER_WS,
+    //  args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    // });
+
+
+  
+    browser = await puppeteer.launch({
+      headless:false,
+      slowMo:50,
+      defaultViewport: null,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      
+    });
 
     const page = await browser.newPage();
 
 
 
 
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36'
-    );
 
       await page.setViewport({ width: 1280, height: 1020 });
     // Set li_at cookie before loading any LinkedIn page
   await page.goto('https://www.linkedin.com', { waitUntil: 'domcontentloaded' });
 
-   console.log("linkedin page")
+
 
    
 //set cookies
@@ -179,28 +192,41 @@ if (!alreadyExists) {
 await page.evaluate((liAtToken) => {
   document.cookie = `li_at=${liAtToken}; domain=.linkedin.com; path=/; secure; SameSite=None`;
 }, usertoken);
-   console.log("setCookies")
+
 await page.evaluate(() => location.href = "https://www.linkedin.com/feed");
 await page.waitForNavigation({ waitUntil: "domcontentloaded" });
 
     // 4. 🔗 Open LinkedIn and validate login
+await simulateHumanBehavior(page);
 
 
-    console.log("✅ Logged in successfully using li_at cookie");
+
 
 
 await new Promise(r => setTimeout(r, 1500));
+
+await page.waitForSelector('input[placeholder="Search"]', { timeout: 10000 });
+const searchInputSelector = 'input[placeholder="Search"]';
+await page.click(searchInputSelector);
+await page.focus(searchInputSelector);
+for (const char of company) {
+  await page.keyboard.type(char);
+  await new Promise(r => setTimeout(r, 150)); // Human-like delay
+}
+await page.keyboard.press('Enter');
+
+
     // 5. 🔎 Go to search results
     const searchUrl = `https://www.linkedin.com/search/results/people/?companySize=${company_sizes}&keywords=${encodeURIComponent(company)}`;
     await page.evaluate(url => window.location.href = url, searchUrl);
     await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
 
-
+await simulateHumanBehavior(page);
 
     let currentPage = 1;
-    const maxPages = 1;
+    const maxPages = 2;
 
-    while (currentPage <= maxPages) {
+    while (currentPage < maxPages) {
 
 
 
@@ -246,24 +272,28 @@ await new Promise(r => setTimeout(r, 1500));
         }
       });
 
+      await simulateHumanBehavior(page);
       // 🚀 Try to connect with people
-      // await page.evaluate(async () => {
-      //   const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-      //   const buttons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
-      //   for (let i = 0; i < buttons.length; i++) {
-      //     try {
-      //       buttons[i].click();
-      //       await delay(1000);
-      //       const sendBtn = document.querySelector('button[aria-label="Send without a note"]');
-      //       if (sendBtn) {
-      //         sendBtn.click();
-      //         await delay(1000);
-      //       }
-      //     } catch (e) {
-      //       console.warn(`❌ Connection failed at ${i}`, e);
-      //     }
-      //   }
-      // });
+    await page.evaluate(async () => {
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        const connectButtons = [...document.querySelectorAll('button[aria-label*="to connect"]')];
+        for (let i = 0; i < connectButtons.length; i++) {
+          try {
+            connectButtons[i].click();
+            await delay(2000);
+            const addNoteBtn = document.querySelector('button[aria-label="Send without a note"]');
+           
+          if(addNoteBtn){
+              addNoteBtn.click();
+              await delay(1000);
+          }
+          } catch (e) {
+            console.warn(`❌ Failed at index ${i}`, e);
+          }
+        }
+      });
+
+
 
       const nextBtn = await page.$('button[aria-label="Next"]');
       if (!nextBtn) break;
@@ -305,15 +335,22 @@ export const linkedinid = async (req, res) => {
 
   let browser;
   try {
-    browser = await puppeteer.connect({
-      browserWSEndpoint: BROWSER_WS,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    // browser = await puppeteer.connect({
+    //   browserWSEndpoint: BROWSER_WS,
+    // args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    // });
+     browser = await puppeteer.launch({
+      headless:false,
+      slowMo:50,
+      defaultViewport: null,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      
     });
 
     const page = await browser.newPage();
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36'
-    );
+    // await page.setUserAgent(
+    //   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36'
+    // );
 
       await page.setViewport({ width: 1280, height: 1020 });
     // Set li_at cookie before loading any LinkedIn page
@@ -383,15 +420,17 @@ export const linkedinFollowupJob = async (cid, uid) => {
     const tokenEntry = tokens.find(t => t.user_id === uid);
     const linkedintoken = tokenEntry?.linkedintoken;
     const usertoken = tokenEntry?.token;
-     console.log("linkedintoken get")
-     console.log("user token done")
-
-  const browser = await puppeteer.connect({ browserWSEndpoint: BROWSER_WS });
-  //  const browser = await puppeteer.launch({ headless:false});
+ 
+  // const browser = await puppeteer.connect({ browserWSEndpoint: BROWSER_WS });
+  let  browser = await puppeteer.launch({
+      headless:false,
+      slowMo:50,
+      defaultViewport: null,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      
+    });
     const page = await browser.newPage();
-   await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36'
-    );
+
 
       await page.setViewport({ width: 1280, height: 1020 });
 
@@ -403,16 +442,11 @@ export const linkedinFollowupJob = async (cid, uid) => {
     }, linkedintoken);
 
     await page.goto('https://www.linkedin.com/feed', { waitUntil: 'domcontentloaded' });
-   console.log("login successfull")
- /// check the connect who have accpted or not
-
-//  await page.goto("https://www.linkedin.com/mynetwork/invite-connect/connections/", {
-//   waitUntil: "domcontentloaded"
-// });
+     await simulateHumanBehavior(page);
 await page.evaluate(() => location.href = "https://www.linkedin.com/mynetwork/invite-connect/connections/");
 await page.waitForNavigation({ waitUntil: "domcontentloaded" });
-console.log("connection page loaded");
-await page.screenshot({ path: screenshotPath });
+
+     await simulateHumanBehavior(page);
 
 await page.waitForSelector(".mn-connection-card__details", { timeout: 45000 });
 const connected = await page.evaluate(() => {
@@ -432,18 +466,18 @@ const connected = await page.evaluate(() => {
         data.push({ name, profileUrl, time });
       }
     });
-console.log(data);
+
     return data;
   });
 
- //get all the lead that are unreplied or connected
+
 
     const leadsRes = await axios.get(`${process.env.BASE_URL}/api/linkedin/leads/unreplied?campaign_id=${cid}`, {
       headers: {
         Authorization: `Bearer ${usertoken}`
       }
     });
- 
+
     const {data} = leadsRes;
 
    const leads = data?.leads;
@@ -454,21 +488,17 @@ for (const lead of leads) {
     const connectedAt = new Date(lead.created_at);
     const now = new Date();
     const hoursSinceConnection = (now - connectedAt) / (1000 * 60 * 60);
-    console.log(`⏱ Hours since connected with ${lead.name}: ${hoursSinceConnection}`);
-
+  
     if (hoursSinceConnection >= 1) {
       try {
-        // ✅ NEW: Open a new tab for every lead follow-up
-       console.log("hello");
-      
-        // await followPage.evaluate (lead.url, { waitUntil: 'domcontentloaded' });
+       
         await Promise.all([
   page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
   page.evaluate(url => location.href = url, lead.url)
 ]);
 
         const firstName = lead.name.trim().split(" ")[0];
-        console.log(firstName);
+    
         const selector = `button[aria-label="Message ${firstName}"]`;
         
         await new Promise(r => setTimeout(r, 1500));
@@ -486,25 +516,29 @@ await page.evaluate((sel) => {
 }, selector);
 
 
-console.log(`✅ Clicked 'Message ${firstName}' button`);
-         await page.screenshot({
-  path: `after_click_message_${firstName}.png`}); 
+// extract the current user token 
+
+let messagetemplate = await axios.get(
+    `${process.env.BASE_URL}/api/user/messages/latest`,
+    {
+      headers: {
+        Authorization: `Bearer ${usertoken}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  const { data } = messagetemplate;
+ let content = data?.data.message_content;
+  let editcontent = content.replace("[Director's Name]", `${lead.name}`);
+
         await page.waitForSelector('div.msg-form__contenteditable', { timeout: 35000 });
-        await page.type('div.msg-form__contenteditable', FOLLOWUP_MESSAGE, { delay: 20 });
+        await page.type('div.msg-form__contenteditable', editcontent, { delay: 300 });
 
           await new Promise(r => setTimeout(r, 1500));
-          await page.screenshot({
-  path: `after_send_message_${firstName}.png`}); 
+  
         await page.click('button.msg-form__send-button');
-        console.log(`✅ Sent follow-up to ${lead.name}`);
-await page.screenshot({
-  path: `after_send_message_${firstName}.png`}); 
-        // await axios.patch(`${process.env.BASE_URL}/api/linkedin/leads/update-replied`, {
-        //   replied: true,
-        //   id: lead.id
-        // }, {
-        //   headers: { Authorization: `Bearer ${usertoken}` }
-        // });
+
+ 
 
   await new Promise(r => setTimeout(r, 1500));
 
@@ -520,7 +554,7 @@ await page.screenshot({
   }
 }
 
-
+await browser.close();
    
 
   } catch (err) {
@@ -529,19 +563,19 @@ await page.screenshot({
 };
 
 
-cron.schedule('*/2 * * * *', async () => {
-  const activeUsers = JSON.parse(fs.readFileSync(linkedincurrentUserFile, 'utf-8'));
-  const activeStarts = JSON.parse(fs.readFileSync(linkedinstart, 'utf-8'));
+// cron.schedule('*/2 * * * *', async () => {
+//   const activeUsers = JSON.parse(fs.readFileSync(linkedincurrentUserFile, 'utf-8'));
+//   const activeStarts = JSON.parse(fs.readFileSync(linkedinstart, 'utf-8'));
 
-  for (const user of activeUsers) {
-    const userCampaigns = activeStarts.filter(item => item.start && item.uid === user.user_id);
+//   for (const user of activeUsers) {
+//     const userCampaigns = activeStarts.filter(item => item.start && item.uid === user.user_id);
 
-    for (const campaign of userCampaigns) {
-      console.log(`🚀 Running follow-up for UID ${user.user_id}, CID ${campaign.cid}`);
-      await linkedinFollowupJob(campaign.cid, user.user_id);
-    }
-  }
-});
+//     for (const campaign of userCampaigns) {
+//       console.log(`🚀 Running follow-up for UID ${user.user_id}, CID ${campaign.cid}`);
+//       await linkedinFollowupJob(campaign.cid, user.user_id);
+//     }
+//   }
+// });
 
 export const linkedinstopcompain = async (req, res) => {
   const { id } = req.body;

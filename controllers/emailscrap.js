@@ -35,6 +35,7 @@ export const scrapemail = async (req, res) => {
     uemail,
     memail,
     pass,
+    message_delay
   } = body;
 
   let msgHeaderId;
@@ -135,7 +136,7 @@ export const scrapemail = async (req, res) => {
       campaigns[index].start = true;
     } else {
       // Add new entry
-      campaigns.push({ start: true, cid: id, uid: sub });
+      campaigns.push({ start: true, cid: id, uid: sub,delay:message_delay });
     }
 
     // Step 3: Write back updated array
@@ -232,7 +233,7 @@ export const scrapemail = async (req, res) => {
         if (gtoken !== undefined) {
           msgHeaderId = await sendViaGmail(
             gtoken,
-            "sanjubora84@gmail.com",
+          lead.email,
             utoken,
             lead.name
           );
@@ -241,7 +242,7 @@ export const scrapemail = async (req, res) => {
           msgHeaderId = await sendemailSMTP(
             user,
             pass,
-            "sanjubora84@gmail.com",
+            lead.email,
             utoken,
             lead.name
           );
@@ -250,7 +251,7 @@ export const scrapemail = async (req, res) => {
         if (mstoken !== undefined) {
           msgHeaderId = await sendViaMicrosoft(
             mstoken,
-            "sanjubora84@gmail.com",
+           lead.email,
             utoken,
             lead.name
           );
@@ -834,7 +835,8 @@ export const refreshMicrosoftToken = async (refreshToken) => {
   }
 };
 
-export const checkAllReplies = async (cid, uid) => {
+export const checkAllReplies = async (cid, uid,delay) => {
+ 
   const currentUsers = JSON.parse(fs.readFileSync(currentUserFile, "utf-8"));
   const currentCampaigns = JSON.parse(fs.readFileSync(currentcompain, "utf-8"));
   const tokens = JSON.parse(fs.readFileSync(tokensFile, "utf-8"));
@@ -933,11 +935,13 @@ export const checkAllReplies = async (cid, uid) => {
             console.log(`✅ Updated: ${lead.email}`);
           } else {
             console.log(`❌ Not replied: ${lead.email}`);
-            const sentAt = new Date(lead.created_at);
+            const sentAt = new Date(lead.updated_at);
             const now = new Date();
+          
             const hoursSinceSent = (now - sentAt) / (1000 * 60 * 60);
-
-            if (hoursSinceSent >= 24) {
+            const delayInDays = delay || 1;
+            const delayInHours = delayInDays * 24;
+            if (Math.floor(hoursSinceSent) === delayInHours) {
               if (lead.source == "gmail") {
                 const tokens = JSON.parse(fs.readFileSync(tokensFile, "utf-8"));
 
@@ -963,7 +967,7 @@ export const checkAllReplies = async (cid, uid) => {
 
                 let msgid = await sendViaGmail(
                   msgtoken,
-                  "sanjubora84@gmail.com",
+                  lead.email,
                   utoken,
                   lead.name
                 );
@@ -987,7 +991,7 @@ export const checkAllReplies = async (cid, uid) => {
                   if (newtoken) {
                     msgid = await sendViaGmail(
                       newtoken,
-                      "sanjubora84@gmail.com",
+                     lead.email,
                       utoken,
                       lead?.name
                     );
@@ -1032,7 +1036,7 @@ export const checkAllReplies = async (cid, uid) => {
 
                 let msgid = await sendViaMicrosoft(
                   msgtoken,
-                  "sanjubora84@gmail.com",
+                 lead.email,
                   utoken,
                   lead.name
                 );
@@ -1088,7 +1092,7 @@ export const checkAllReplies = async (cid, uid) => {
                 let msgid = await sendemailSMTP(
                   user,
                   pass,
-                  "sanjubora84@gmail.com",
+                  lead.email,
                   utoken,
                   lead.name
                 );
@@ -1119,7 +1123,38 @@ export const checkAllReplies = async (cid, uid) => {
   return { success: true };
 };
 
-cron.schedule("* * * * *", async () => {
+// cron.schedule("0 9-17 * * *", async () => {
+//   const statcron = JSON.parse(fs.readFileSync(start, "utf-8"));
+//   const allUsers = JSON.parse(fs.readFileSync(currentUserFile, "utf-8"));
+
+//   // Map all user processes into an array of Promises
+//   const userTasks = allUsers.map(async (user) => {
+//     const userCampaigns = statcron.filter(
+//       (item) => item.start === true && item.uid == user.user_id
+//     );
+
+//     if (userCampaigns.length === 0) {
+//       console.log(`⛔ No active campaigns for User ${user.user_id}`);
+//       return;
+//     }
+
+//     console.log(`👤 Running campaigns for User ${user.user_id}`);
+
+//     for (const campaign of userCampaigns) {
+//       console.log(
+//         `✅ Running Campaign ID ${campaign.cid} for User ${user.user_id}`
+//       );
+
+//       // You can also set context in-memory or use dynamic state per user if needed
+//       await checkAllReplies(campaign.cid, user.user_id); // Make sure this works properly in parallel
+//     }
+//   });
+
+//   // Run all user tasks in parallel
+//   await Promise.all(userTasks);
+// });
+
+cron.schedule("*/1 * * * *", async () => {
   const statcron = JSON.parse(fs.readFileSync(start, "utf-8"));
   const allUsers = JSON.parse(fs.readFileSync(currentUserFile, "utf-8"));
 
@@ -1142,13 +1177,14 @@ cron.schedule("* * * * *", async () => {
       );
 
       // You can also set context in-memory or use dynamic state per user if needed
-      await checkAllReplies(campaign.cid, user.user_id); // Make sure this works properly in parallel
+      await checkAllReplies(campaign.cid, user.user_id,campaign.delay); // Make sure this works properly in parallel
     }
   });
 
   // Run all user tasks in parallel
   await Promise.all(userTasks);
 });
+
 
 if (!isMainThread) {
   (async () => {
